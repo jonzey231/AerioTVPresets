@@ -163,10 +163,8 @@ repository's release zip with `{version}`, plus a pull request titled `[aeriotv-
 
 ## Changelog
 
-- 0.0.9: Profiles no longer take PINs (users set them on a device), the Profiles section shows one heading, and the Profiles table has room for the Role labels.
-- 0.0.8: counts read as one or several ("1 profile", "2 groups"), and notifications say group order and hidden groups.
 - 0.0.7: Copy from another user, Also apply to several users, a Current record line per section,
-  a Profiles section, Clear Record, and clearer steps.
+  a Profiles section (no PINs; users set them on a device), Clear Record, and clearer steps.
 - 0.0.6: the steps and notes show one line each, and the steps are rewritten to match the flow.
 - 0.0.5: Live TV shows only the Lists note until the lists load; clearer note text.
 - 0.0.4: favorites and manual group order are tables that start from the record; settings show the value in the record now; lists build when the plugin loads, so Load becomes Refresh Lists; declares the `user_data` capability.
