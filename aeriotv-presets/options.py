@@ -59,6 +59,9 @@ INTRO_STEPS = "\n".join([
     "6. In Apply, pick Fill to add only what the record does not have yet, or Replace to overwrite what you set here. Run Apply and confirm.",
 ])
 
+COPY_FROM = "copy_from"
+ALSO_USERS = "also_users"
+
 LEAVE_EMPTY = {"value": NONE, "label": "Leave empty"}
 LEAVE_AS_IS = {"value": NONE, "label": "Leave as is"}
 
@@ -172,6 +175,7 @@ def build_fields(manifest_fields: List[Dict[str, Any]], *, usernames: Optional[L
     out.append(_select("target_username", "User",
                        [{"value": NONE, "label": "Choose a user"}] + [{"value": u, "label": u} for u in users],
                        "The Dispatcharr user whose AerioTV setup this writes."))
+    out.append(_copy_from(users, selected))
     for key, _title in SECTIONS:
         out.append(base[key])
 
@@ -330,7 +334,13 @@ def _build_native(manifest_fields, *, usernames, saved, channels, live_groups, m
         users.insert(0, selected)
     out.append(_select("target_username", "User",
                        [{"value": NONE, "label": "Choose a user"}] + [{"value": u, "label": u} for u in users],
-                       "The Dispatcharr user whose AerioTV setup this writes."))
+                       "The Dispatcharr user whose AerioTV setup this writes, and whose channels the lists show."))
+    out.append(_copy_from(users, selected))
+    others = [u for u in users if u != selected]
+    if others:
+        out.append({"id": ALSO_USERS, "label": "Also apply to", "type": "multiselect", "default": [],
+                    "help_text": "Preview and Apply also write these users. Favorites and groups a user cannot see are skipped for that user.",
+                    "options": [{"value": u, "label": u} for u in others]})
     for sec_id, key, title, collapsed in NATIVE_SECTIONS:
         out.append({"id": sec_id, "label": title, "type": "section", "collapsed": collapsed})
         for field in _section_fields(key, base, channels, live_groups, movie_groups, series_groups,
@@ -379,3 +389,10 @@ def split_infos(fields: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 piece.pop("label", None)
             out.append(piece)
     return out
+
+
+def _copy_from(users: List[str], selected: str) -> Dict[str, Any]:
+    return _select(COPY_FROM, "Copy from",
+                   [{"value": NONE, "label": "Nobody"}] + [{"value": u, "label": u} for u in users if u != selected],
+                   "Pick a user and run Refresh Lists to fill every section from that user's AerioTV record. "
+                   "That user's record is only read.")

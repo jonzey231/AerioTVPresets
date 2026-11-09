@@ -44,7 +44,7 @@ def test_default_layout_before_a_user():
     fields = options.build_fields(MANIFEST["fields"], usernames=["alice", "plugin"])
     all_valid(fields)
     assert [f["id"] for f in fields if "#" not in f["id"]] == [
-        "intro", "target_username", "expand_live", "expand_movies", "expand_series", "expand_app",
+        "intro", "target_username", "copy_from", "expand_live", "expand_movies", "expand_series", "expand_app",
         "hdr:expand_live", "live_note",
         "hdr:expand_movies", "hdr:expand_series", "hdr:expand_app", "apply_mode"]
     by_id = {f["id"]: f for f in fields}
@@ -228,3 +228,13 @@ def test_notes_become_one_line_each():
     for f in fields:
         if f["type"] == "info" and f.get("description"):
             assert "\n" not in f["description"]
+
+
+def test_user_controls_on_native_builds():
+    fields = options.build_fields(MANIFEST["fields"], usernames=["alice", "plugin", "bob"],
+                                  saved={"target_username": "plugin"}, native_sections=True)
+    by_id = {f["id"]: f for f in fields}
+    assert [o["value"] for o in by_id["copy_from"]["options"]] == ["__none__", "alice", "bob"]
+    also = by_id["also_users"]
+    assert also["type"] == "multiselect" and [o["value"] for o in also["options"]] == ["alice", "bob"]
+    assert "section" not in also

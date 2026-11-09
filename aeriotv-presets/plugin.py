@@ -13,7 +13,7 @@ import os
 import re
 
 from . import dispatcharr_bridge as bridge
-from . import options, schema, seed
+from . import copying, options, schema, seed
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(_HERE, "plugin.json"), "r", encoding="utf-8") as _fh:
@@ -135,12 +135,27 @@ class Plugin:
 
     def _load_lists(self, settings, logger):
         user = self._target(settings)
-        channels = len(bridge.visible_channels(user))
-        groups = len(bridge.visible_group_names(user))
+        channel_rows = bridge.visible_channels(user)
+        live = bridge.visible_group_names(user)
+        message = f"Loaded {len(channel_rows)} channels and {len(live)} groups for {user.username}."
+        source_name = str(settings.get(options.COPY_FROM) or "").strip()
+        if source_name and source_name != seed.NONE and source_name != user.username:
+            source = bridge.find_user(source_name)
+            key = schema.user_key(source.username)
+            record = bridge.read_record(source, key) if key else None
+            vod = bridge.vod_group_names(user)
+            updates, report = copying.record_to_settings(
+                record, channel_ids=[r["id"] for r in channel_rows], live_groups=live,
+                movie_groups=vod["movie"], series_groups=vod["series"])
+            updates[options.COPY_FROM] = seed.NONE
+            bridge.update_saved_settings(_plugin_keys(), updates)
+            logger.info("[AERIOTV-PRESETS] copied user %s into the form for user %s: %s; dropped channels=%d groups=%d settings=%d",
+                        source.pk, user.pk, ",".join(report.copied) or "-", report.dropped_channels,
+                        report.dropped_groups, report.dropped_settings)
+            message = report.text(source.username)
         bridge.request_field_refresh()
-        logger.info("[AERIOTV-PRESETS] lists requested for user %s: channels=%d groups=%d", user.pk, channels, groups)
-        return {"status": "ok",
-                "message": f"Loaded {channels} channels and {groups} groups for {user.username}. Reload the page."}
+        logger.info("[AERIOTV-PRESETS] lists requested for user %s: channels=%d groups=%d", user.pk, len(channel_rows), len(live))
+        return {"status": "ok", "message": message + " Reload the page."}
 
     def _apply(self, settings, logger, *, write):
         request = seed.parse_settings(settings)

@@ -145,6 +145,21 @@ def saved_settings(plugin_key: str) -> Dict[str, Any]:
     return dict(cfg.settings or {}) if cfg else {}
 
 
+def update_saved_settings(plugin_keys: List[str], updates: Dict[str, Any]) -> None:
+    """Merge updates into this plugin's saved settings (PluginConfig.settings),
+    under the first key that has a PluginConfig row."""
+    from apps.plugins.models import PluginConfig
+
+    for key in plugin_keys:
+        cfg = PluginConfig.objects.filter(key=key).first()
+        if cfg is not None:
+            merged = dict(cfg.settings or {})
+            merged.update(updates)
+            cfg.settings = merged
+            cfg.save(update_fields=["settings", "updated_at"])
+            return
+
+
 def request_field_refresh() -> None:
     """Make every worker rebuild this plugin's fields on the next Plugins page load.
 
