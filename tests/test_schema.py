@@ -39,9 +39,11 @@ def test_group_order_rejects_mode():
 def test_settings_fixture(fixture):
     data = fixture("settings.json")
     assert schema.validate_settings(data) == data
-    # trueBlack and textScale are allowlisted but not seeded by this plugin.
+    # Every name in the doc example is one the plugin can seed.
+    assert schema.validate_settings(data, strict_names=True) == data
+    # A name the plugin does not seed (free text) is refused.
     with pytest.raises(schema.SchemaError):
-        schema.validate_settings(data, strict_names=True)
+        schema.validate_settings({"v": {"customAccentHex": "FF0000"}}, strict_names=True)
 
 
 def test_settings_strict_values():

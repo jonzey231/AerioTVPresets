@@ -1,6 +1,6 @@
 {
   "name": "AerioTV Setup",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Preconfigure a user's AerioTV favorites, group order, hidden groups, and settings. Their AerioTV devices offer Dispatcharr Sync on first launch and start from this setup.",
   "author": "jonzey231",
   "license": "AGPL-3.0-or-later",
@@ -12,7 +12,7 @@
       "id": "intro",
       "type": "info",
       "label": "How it works",
-      "description": "1. Pick a user and run Load User Lists, then reload this page. 2. Pick favorites, group order, hidden groups, and settings from the lists. 3. Save, run Preview, then Apply. Anything left on Leave empty or Leave as is is not written."
+      "description": "1. Choose a user and the sections to expand, Save, run Load, then reload this page. 2. Make your choices in each section and Save. 3. Run Preview, then Apply. Anything left on Leave empty or Leave as is is not written. Collapsed sections keep their saved choices."
     },
     {
       "id": "target_username",
@@ -20,6 +20,30 @@
       "type": "string",
       "default": "",
       "help_text": "The Dispatcharr user whose AerioTV setup this writes. Becomes a list of users once the plugin has loaded."
+    },
+    {
+      "id": "expand_live",
+      "label": "Expand Live TV",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "id": "expand_movies",
+      "label": "Expand Movies",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "id": "expand_series",
+      "label": "Expand TV Shows",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "id": "expand_app",
+      "label": "Expand App Settings",
+      "type": "boolean",
+      "default": false
     },
     {
       "id": "group_order_mode",
@@ -46,70 +70,6 @@
       ]
     },
     {
-      "id": "selected_theme",
-      "label": "Theme",
-      "type": "select",
-      "default": "__none__",
-      "options": [
-        {
-          "value": "__none__",
-          "label": "Leave as is"
-        },
-        {
-          "value": "Aerio",
-          "label": "Aerio"
-        },
-        {
-          "value": "Midnight",
-          "label": "Midnight"
-        },
-        {
-          "value": "Sunset",
-          "label": "Sunset"
-        },
-        {
-          "value": "Forest",
-          "label": "Forest"
-        },
-        {
-          "value": "Lavender",
-          "label": "Lavender"
-        },
-        {
-          "value": "Monochrome",
-          "label": "Monochrome"
-        },
-        {
-          "value": "Light",
-          "label": "Slate"
-        }
-      ]
-    },
-    {
-      "id": "appearance_mode",
-      "label": "Mode",
-      "type": "select",
-      "default": "__none__",
-      "options": [
-        {
-          "value": "__none__",
-          "label": "Leave as is"
-        },
-        {
-          "value": "system",
-          "label": "System"
-        },
-        {
-          "value": "light",
-          "label": "Light"
-        },
-        {
-          "value": "dark",
-          "label": "Dark"
-        }
-      ]
-    },
-    {
       "id": "apply_mode",
       "label": "Apply mode",
       "type": "select",
@@ -129,8 +89,8 @@
   "actions": [
     {
       "id": "load_lists",
-      "label": "Load User Lists",
-      "description": "Fills the channel and group lists for the chosen user. Save the user first, run this, then reload the page.",
+      "label": "Load",
+      "description": "Builds the lists for the chosen user and the expanded sections. Save first, run this, then reload the page.",
       "button_label": "Load",
       "button_variant": "filled"
     },

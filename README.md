@@ -11,11 +11,19 @@ for the vendored excerpt and [CONTRIBUTING.md](CONTRIBUTING.md) for where the co
 
 ## What it does
 
-1. You pick a Dispatcharr user from the User list, save, and run **Load User Lists**, then reload
-   the page. Every other choice is a list built for that user: Favorite 1 to 10 (that user's
-   channels, shown as `number name [group]`), Group position 1 to 8, Hidden Live TV group 1 to 8,
-   Hidden movie group 1 to 5, Hidden series group 1 to 5, Default group, Theme, Mode, and Apply
-   mode. Anything left on Leave empty or Leave as is is not written.
+1. You pick a Dispatcharr user from the User list, turn on the sections you want to edit (Expand
+   Live TV, Expand Movies, Expand TV Shows, and Expand App Settings), save, run **Load**, and reload
+   the page. Each expanded section shows its choices under its header; several can be open at once.
+   A collapsed section shows only its header, and its saved choices still apply.
+   - **Live TV**: Favorite 1 to 10 (that user's channels, shown as `number name [group]`), Group
+     order, Group position 1 to 8, Default group, and a Show switch for every Live TV group the user
+     can see.
+   - **Movies** and **TV Shows**: a Show switch for every movie or series category.
+   - **App Settings**: settings from the AerioTV settings allowlist that have a fixed set of values
+     (appearance, startup, Live TV and guide, player, Multiview, Movies, TV Shows, and DVR, and TV
+     remote), each with Leave as is.
+   Anything left on Leave empty or Leave as is is not written. Groups turned off are written as
+   hidden groups (`hiddenGroups`); the user can show them again in AerioTV's group manager.
 2. **Show Channels** and **Show Groups** list the same channels and groups as text, for reference.
 3. **Preview** reports what Apply would add, replace, or keep. It writes nothing.
 4. **Apply** writes the record, after a confirmation.
@@ -54,9 +62,10 @@ AerioTV device that has never signed in as that user.
 1. On a computer, run `scripts/build_zip.sh` in this repository to build the zip.
 2. In the Dispatcharr web UI, open Plugins, choose Import, and upload the zip.
 3. Turn the AerioTV Setup plugin on and accept the trust prompt.
-4. Open the plugin settings, choose the test user in the User list, and save.
-5. Run Load User Lists, then reload the page. Expected: the settings now show Favorite 1 to 10,
-   Group position 1 to 8, the hidden group lists, and Default group.
+4. Open the plugin settings, choose the test user in the User list, leave Expand Live TV on, and
+   save.
+5. Run Load, then reload the page. Expected: the Live TV section shows Favorite 1 to 10, Group
+   order, Group position 1 to 8, Default group, and a Show switch for each group.
 6. Set Favorite 1 and Favorite 2 to two channels from the lists.
 7. Set Group order to Manual and Group position 1 to 3 to three groups, in the order you want.
    Leave Apply mode on Fill. Save.
@@ -76,7 +85,7 @@ AerioTV device that has never signed in as that user.
 
 ## Status
 
-Version 0.1.1. Unit tests pass (`pytest`); it has not yet run inside a Dispatcharr
+Version 0.1.2. Unit tests pass (`pytest`); it has not yet run inside a Dispatcharr
 server.
 
 Built against Dispatcharr v0.33.0 (commit `1241b3f`, 2026-10-30) and the Dispatcharr plugin
@@ -110,8 +119,14 @@ Open questions:
    with the App Data API and `channels_queryset_for_user` was not confirmed.
 9. **Movie and series groups.** The hidden movie and series lists show every VOD category on the
    server; v0.33.0 has no per-user VOD category rule to reuse.
-10. **No multi-select.** Dispatcharr 0.33.0 renders info, boolean, number, select, text, and string
-   fields only (`frontend/src/components/Field.jsx`), so lists use numbered selects.
+10. **No multi-select and no field groups.** Dispatcharr 0.33.0 renders info, boolean, number,
+   select, text, and string fields only (`frontend/src/components/Field.jsx:16-82`), as one flat list
+   (`frontend/src/components/cards/PluginCard.jsx:44-53`); the field serializer has no group or
+   section attribute (`apps/plugins/serializers.py:23-35`). Lists use numbered selects, and sections
+   use Expand switches with Load.
+13. **App Settings choices.** Number settings offer common values inside the schema's ranges, not
+   every allowed value. Free text, colors, sort orders, and other values the schema does not list
+   are not offered.
 11. **Select option values must be non-empty.** `apps/plugins/serializers.py` drops a whole field
    when any option value is blank, which is why 0.1.0 showed no User, Group order, Theme, or Mode
    control. Leave empty now uses the value `__none__`.

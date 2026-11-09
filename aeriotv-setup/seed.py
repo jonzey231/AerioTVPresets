@@ -20,7 +20,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from . import schema
+from . import app_settings, options, schema
 
 MODE_FILL = "fill"
 MODE_REPLACE = "replace"
@@ -90,8 +90,9 @@ def _slots(settings: Dict[str, Any], prefix: str) -> List[str]:
 def parse_settings(settings: Dict[str, Any]) -> SeedRequest:
     """Build a SeedRequest from the plugin's saved settings.
 
-    Reads the select slots (favorite_N, group_N, hidden_live_N, hidden_movies_N,
-    hidden_series_N). The 0.1.0 text fields (favorites, group_order,
+    Reads the select slots (favorite_N, group_N), the Show switches
+    (show_live:, show_movies:, show_series:), and the App Settings selects
+    (set:<name>). The 0.1.0 text fields (favorites, group_order,
     hidden_groups_*) are ignored on purpose: Dispatcharr keeps old keys in the
     saved settings after the fields are gone, and the admin can no longer see them.
     """
@@ -118,19 +119,14 @@ def parse_settings(settings: Dict[str, Any]) -> SeedRequest:
     elif order:
         cats[schema.GROUP_ORDER] = {"mode": "manual", "order": order}
 
-    hidden = {
-        "live": _slots(settings, "hidden_live"),
-        "movies": _slots(settings, "hidden_movies"),
-        "series": _slots(settings, "hidden_series"),
-    }
+    hidden = options.hidden_from_switches(settings)
     if any(hidden.values()):
         cats[schema.HIDDEN_GROUPS] = hidden
 
-    lane: Dict[str, Any] = {}
-    if _value(settings, "selected_theme"):
-        lane["selectedTheme"] = _value(settings, "selected_theme")
-    if _value(settings, "appearance_mode"):
-        lane["appearanceMode"] = _value(settings, "appearance_mode")
+    try:
+        lane: Dict[str, Any] = app_settings.lane_from_settings(settings, NONE)
+    except ValueError as exc:
+        raise SeedError(f"setting {exc} has a value outside the schema") from exc
     default_group = _value(settings, "default_group")
     if default_group:
         lane["defaultGroup"] = default_group

@@ -1,12 +1,13 @@
 """Build the plugin's settings fields from live Dispatcharr data.
 
 Pure Python, no Django. Dispatcharr 0.33.0 renders only these field types
-(frontend/src/components/Field.jsx): info, boolean, number, select, text, and
-string. There is no multi-select, so lists are repeated selects (Favorite 1,
-Favorite 2, ...). Select options are {"value", "label"} with non-empty strings:
-apps/plugins/serializers.py validates each option with CharField() (blank not
-allowed) and drops the whole field when one option fails, so "leave empty" uses
-the NONE sentinel instead of "".
+(frontend/src/components/Field.jsx:16-82): info, boolean, number, select,
+text, and string, in one flat list (components/cards/PluginCard.jsx:44-53).
+There is no multi-select and no field grouping, so lists are numbered selects
+and sections are info headers that open with an Expand switch. Select options
+are {"value", "label"} with non-empty strings (apps/plugins/serializers.py:18-20
+rejects a blank value and the loader then drops the whole field), so "leave
+empty" uses the NONE sentinel.
 """
 
 from __future__ import annotations
@@ -14,12 +15,24 @@ from __future__ import annotations
 import copy
 from typing import Any, Dict, Iterable, List, Optional
 
+from . import app_settings
+
 NONE = "__none__"
 FAVORITE_SLOTS = 10
 GROUP_ORDER_SLOTS = 8
-HIDDEN_LIVE_SLOTS = 8
-HIDDEN_VOD_SLOTS = 5
 MAX_CHANNEL_OPTIONS = 3000
+
+SHOW_LIVE = "show_live:"
+SHOW_MOVIES = "show_movies:"
+SHOW_SERIES = "show_series:"
+
+SECTIONS = (
+    ("expand_live", "Live TV"),
+    ("expand_movies", "Movies"),
+    ("expand_series", "TV Shows"),
+    ("expand_app", "App Settings"),
+)
+EXPAND_DEFAULTS = {"expand_live": True, "expand_movies": False, "expand_series": False, "expand_app": False}
 
 LEAVE_EMPTY = {"value": NONE, "label": "Leave empty"}
 LEAVE_AS_IS = {"value": NONE, "label": "Leave as is"}
@@ -60,57 +73,114 @@ def _select(fid: str, label: str, options: List[Dict[str, str]], help_text: str 
     return field
 
 
-def _info(fid: str, label: str, text: str) -> Dict[str, Any]:
-    return {"id": fid, "label": label, "type": "info", "description": text}
+def _info(fid: str, label: str, text: str = "") -> Dict[str, Any]:
+    field = {"id": fid, "label": label, "type": "info"}
+    if text:
+        field["description"] = text
+    return field
+
+
+def _show_switches(prefix: str, names: Iterable[str]) -> List[Dict[str, Any]]:
+    return [{"id": prefix + n, "label": f"Show {n}", "type": "boolean", "default": True} for n in names if n]
+
+
+def expanded(saved: Dict[str, Any]) -> Dict[str, bool]:
+    out = {}
+    for key, default in EXPAND_DEFAULTS.items():
+        value = saved.get(key, default)
+        out[key] = value is True or value == "true"
+    return out
+
+
+def app_settings_fields() -> List[Dict[str, Any]]:
+    fields: List[Dict[str, Any]] = []
+    for title, rows in app_settings.SPEC:
+        fields.append(_info("app_hdr:" + title, title))
+        for name, label, kind, opts in rows:
+            if kind == app_settings.BOOL:
+                choices = [{"value": "true", "label": "On"}, {"value": "false", "label": "Off"}]
+            else:
+                choices = [{"value": app_settings.option_value(v), "label": l} for v, l in opts]
+            fields.append(_select(app_settings.field_id(name), label, [dict(LEAVE_AS_IS)] + choices))
+    return fields
 
 
 def build_fields(manifest_fields: List[Dict[str, Any]], *, usernames: Optional[List[str]],
-                 selected_user: str = "", channels: Optional[List[Dict[str, Any]]] = None,
+                 saved: Optional[Dict[str, Any]] = None, channels: Optional[List[Dict[str, Any]]] = None,
                  live_groups: Optional[List[str]] = None, movie_groups: Optional[List[str]] = None,
                  series_groups: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     """Return the full field list.
 
     usernames None means the database was not reachable: the manifest fields
-    come back unchanged (User stays a text box). channels None means no user
-    lists are loaded yet: the list sections are replaced by a note.
+    come back unchanged. channels None means no user is chosen yet.
     """
-    base = {f["id"]: copy.deepcopy(f) for f in manifest_fields}
     if usernames is None:
         return [copy.deepcopy(f) for f in manifest_fields]
+    base = {f["id"]: copy.deepcopy(f) for f in manifest_fields}
+    saved = saved or {}
+    selected = str(saved.get("target_username") or "").strip()
+    if selected == NONE:
+        selected = ""
+    open_ = expanded(saved)
 
     out: List[Dict[str, Any]] = [base["intro"]]
     users = [u for u in usernames if u]
-    if selected_user and selected_user not in users:
-        users.insert(0, selected_user)
+    if selected and selected not in users:
+        users.insert(0, selected)
     out.append(_select("target_username", "User",
                        [{"value": NONE, "label": "Choose a user"}] + [{"value": u, "label": u} for u in users],
                        "The Dispatcharr user whose AerioTV setup this writes."))
+    for key, _title in SECTIONS:
+        out.append(base[key])
 
-    if channels is None:
-        out.append(_info("lists_note", "Lists", "Choose a user, save, run Load User Lists, then reload this page to pick favorites and groups."))
-        out.append(base["group_order_mode"])
-    else:
-        chan_opts = channel_options(channels)
-        live_opts = name_options(live_groups or [], LEAVE_EMPTY)
-        out.append(_info("favorites_note", "Favorite channels", "In display order. Leave empty to skip a slot."))
-        for i, fid in enumerate(slot_ids("favorite", FAVORITE_SLOTS), 1):
-            out.append(_select(fid, f"Favorite {i}", chan_opts))
-        out.append(base["group_order_mode"])
-        for i, fid in enumerate(slot_ids("group", GROUP_ORDER_SLOTS), 1):
-            out.append(_select(fid, f"Group position {i}", live_opts))
-        out.append(_info("hidden_note", "Hidden groups", "Groups AerioTV hides for this user."))
-        for i, fid in enumerate(slot_ids("hidden_live", HIDDEN_LIVE_SLOTS), 1):
-            out.append(_select(fid, f"Hidden Live TV group {i}", live_opts))
-        movie_opts = name_options(movie_groups or [], LEAVE_EMPTY)
-        for i, fid in enumerate(slot_ids("hidden_movies", HIDDEN_VOD_SLOTS), 1):
-            out.append(_select(fid, f"Hidden movie group {i}", movie_opts))
-        series_opts = name_options(series_groups or [], LEAVE_EMPTY)
-        for i, fid in enumerate(slot_ids("hidden_series", HIDDEN_VOD_SLOTS), 1):
-            out.append(_select(fid, f"Hidden series group {i}", series_opts))
-        out.append(_select("default_group", "Default group", name_options(live_groups or [], LEAVE_AS_IS),
-                           "The Live TV group AerioTV opens to."))
+    for key, title in SECTIONS:
+        if not open_[key]:
+            out.append(_info("hdr:" + key, f"{title} (collapsed)",
+                             f"Turn on Expand {title}, Save, and run Load to edit. Saved choices still apply."))
+            continue
+        out.append(_info("hdr:" + key, title))
+        if key == "expand_live":
+            if channels is None:
+                out.append(_info("live_note", "Lists", "Choose a user, Save, and run Load to pick favorites and groups."))
+                out.append(base["group_order_mode"])
+                continue
+            live_opts = name_options(live_groups or [], LEAVE_EMPTY)
+            out.append(_info("favorites_note", "Favorite channels", "In display order. Leave empty to skip a slot."))
+            chan_opts = channel_options(channels)
+            for i, fid in enumerate(slot_ids("favorite", FAVORITE_SLOTS), 1):
+                out.append(_select(fid, f"Favorite {i}", chan_opts))
+            out.append(base["group_order_mode"])
+            for i, fid in enumerate(slot_ids("group", GROUP_ORDER_SLOTS), 1):
+                out.append(_select(fid, f"Group position {i}", live_opts))
+            out.append(_select("default_group", "Default group", name_options(live_groups or [], LEAVE_AS_IS),
+                               "The Live TV group AerioTV opens to."))
+            out.append(_info("live_groups_note", "Live TV groups",
+                             "Turn a group off to hide it. The user can show it again in AerioTV."))
+            out.extend(_show_switches(SHOW_LIVE, live_groups or []))
+        elif key == "expand_movies":
+            out.append(_info("movie_groups_note", "Movie categories",
+                             "Turn a category off to hide it. The user can show it again in AerioTV."))
+            out.extend(_show_switches(SHOW_MOVIES, movie_groups or []))
+        elif key == "expand_series":
+            out.append(_info("series_groups_note", "TV show categories",
+                             "Turn a category off to hide it. The user can show it again in AerioTV."))
+            out.extend(_show_switches(SHOW_SERIES, series_groups or []))
+        else:
+            out.extend(app_settings_fields())
 
-    out.append(base["selected_theme"])
-    out.append(base["appearance_mode"])
     out.append(base["apply_mode"])
+    return out
+
+
+def hidden_from_switches(settings: Dict[str, Any]) -> Dict[str, List[str]]:
+    """Groups whose Show switch is off, as hiddenGroups lists (switch on or absent = shown)."""
+    out = {"live": [], "movies": [], "series": []}
+    for prefix, kind in ((SHOW_LIVE, "live"), (SHOW_MOVIES, "movies"), (SHOW_SERIES, "series")):
+        for key in sorted(settings):
+            if key.startswith(prefix):
+                value = settings[key]
+                if value is False or value == "false":
+                    name = key[len(prefix):]
+                    if name and name not in out[kind]:
+                        out[kind].append(name)
     return out

@@ -40,23 +40,22 @@ def _live_fields():
         names = bridge.usernames()
     except Exception:
         return options.build_fields(manifest_fields, usernames=None)
-    selected = seed.NONE
+    saved = {}
     channels = live = None
     vod = {"movie": [], "series": []}
     try:
         saved = bridge.saved_settings(_plugin_key())
+        vod = bridge.vod_group_names()
         selected = str(saved.get("target_username") or "").strip()
         if selected and selected != seed.NONE:
             user = bridge.find_user(selected)
             channels = bridge.visible_channels(user)
             live = bridge.visible_group_names(user)
-            vod = bridge.vod_group_names()
     except Exception:
         _log.warning("[AERIOTV-SETUP] could not load lists for the chosen user")
         channels = live = None
     return options.build_fields(
-        manifest_fields, usernames=names,
-        selected_user="" if selected == seed.NONE else selected,
+        manifest_fields, usernames=names, saved=saved,
         channels=channels, live_groups=live,
         movie_groups=vod.get("movie"), series_groups=vod.get("series"),
     )
@@ -107,7 +106,7 @@ class Plugin:
         count = len(bridge.visible_channels(user))
         bridge.request_field_refresh()
         logger.info("[AERIOTV-SETUP] lists requested for user %s: %d channels", user.pk, count)
-        return {"status": "ok", "message": f"Loaded {count} channels for this user. Reload the page to see the lists."}
+        return {"status": "ok", "message": f"Loaded {count} channels for this user. Reload the page to see the expanded sections."}
 
     def _show_channels(self, settings, logger):
         user = self._target(settings)
@@ -148,6 +147,16 @@ class Plugin:
                     f"{len(unknown)} favorite id(s) are not channels this user can see: "
                     + ", ".join(str(i) for i in unknown[:20])
                 )
+
+        hidden = request.categories.get(schema.HIDDEN_GROUPS)
+        if hidden and hidden.get("live"):
+            # Switches saved for a previously chosen user can name groups this user never sees.
+            visible_groups = set(bridge.visible_group_names(user))
+            hidden["live"] = [g for g in hidden["live"] if g in visible_groups]
+            if not any(hidden.values()):
+                del request.categories[schema.HIDDEN_GROUPS]
+        if not request.categories:
+            raise seed.SeedError("nothing to apply: fill in at least one section")
 
         keys = bridge.list_keys(user)
         blocked, _legacy = seed.legacy_conflict(keys, key)

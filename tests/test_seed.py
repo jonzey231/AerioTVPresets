@@ -14,10 +14,10 @@ def full_settings(**over):
         "favorite_1": "1042", "favorite_2": "77", "favorite_3": "__none__", "favorite_10": "903",
         "group_order_mode": "manual",
         "group_1": "Sports", "group_2": "News", "group_3": "__none__", "group_4": "Movies", "group_5": "News",
-        "hidden_live_1": "Adult", "hidden_live_2": "Spanish", "hidden_movies_1": "__none__",
-        "hidden_series_1": "Kids",
-        "selected_theme": "Midnight",
-        "appearance_mode": "dark",
+        "show_live:Adult": False, "show_live:Spanish": False, "show_live:News": True,
+        "show_series:Kids": False, "show_movies:Drama": True,
+        "set:selectedTheme": "Midnight",
+        "set:appearanceMode": "dark",
         "default_group": "Sports",
         "apply_mode": "fill",
     }
@@ -30,11 +30,11 @@ def test_parse_matches_fixtures(fixture):
     assert req.categories["favorites"] == fixture("favorites.json")
     assert req.categories["groupOrder"] == fixture("groupOrder.json")
     assert req.categories["hiddenGroups"] == fixture("hiddenGroups.json")
-    assert req.categories["settings"] == {"v": {"selectedTheme": "Midnight", "appearanceMode": "dark", "defaultGroup": "Sports"}}
+    assert req.categories["settings"] == {"v": {"selectedTheme": "Midnight", "appearanceMode": "dark", "trueBlack": False, "defaultGroup": "Sports"}}
 
 
 def test_parse_blank_sections_are_left_out():
-    req = seed.parse_settings({"target_username": "viewer", "favorite_1": "5", "selected_theme": "__none__",
+    req = seed.parse_settings({"target_username": "viewer", "favorite_1": "5", "set:selectedTheme": "__none__",
                                "group_order_mode": "__none__", "apply_mode": "fill"})
     assert list(req.categories) == ["favorites"]
     assert req.mode == "fill"
@@ -121,3 +121,16 @@ def test_slot_order_is_numeric_not_text():
 def test_old_text_fields_are_ignored():
     req = seed.parse_settings({"target_username": "v", "favorites": "1, 2", "group_order": "News"})
     assert req.categories == {}
+
+
+def test_app_settings_values_are_typed():
+    req = seed.parse_settings({"target_username": "v", "set:liveRewindEnabled": "false",
+                               "set:liveRewindDepthMinutes": "60", "set:textScale": "1.1",
+                               "set:appearanceMode": "trueblack", "set:skipBack": "__none__"})
+    assert req.categories["settings"] == {"v": {"liveRewindEnabled": False, "liveRewindDepthMinutes": 60,
+                                                "textScale": 1.1, "appearanceMode": "dark", "trueBlack": True}}
+
+
+def test_app_setting_outside_schema_is_refused():
+    with pytest.raises(seed.SeedError):
+        seed.parse_settings({"target_username": "v", "set:skipBack": "7"})

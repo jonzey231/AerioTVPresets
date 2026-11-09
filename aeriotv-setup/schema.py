@@ -14,6 +14,8 @@ import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from . import app_settings
+
 # Schema section 3. The plugin never writes a higher number than this.
 SCHEMA_VERSION = 3
 CATEGORIES = "categories"
@@ -150,6 +152,9 @@ SEEDABLE_SETTINGS = {
     "appearanceMode": _check_appearance,
     "defaultGroup": _check_group_token,
 }
+for _name in app_settings.BY_NAME:
+    SEEDABLE_SETTINGS.setdefault(_name, (lambda n: lambda v: app_settings.is_valid(n, v))(_name))
+SEEDABLE_SETTINGS["trueBlack"] = lambda v: isinstance(v, bool)
 
 
 def validate_settings(data: Any, *, strict_names: bool = False) -> Dict[str, Any]:
