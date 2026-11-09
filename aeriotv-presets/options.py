@@ -221,7 +221,9 @@ def _multiselect(fid: str, label: str, names: Iterable[str], help_text: str) -> 
 
 def _section_fields(key, base, channels, live_groups, movie_groups, series_groups,
                     multiselect: bool = False, tables: bool = False,
-                    current: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+                    current: Optional[Dict[str, Any]] = None,
+                    users_for_profiles: Optional[List[str]] = None,
+                    target: str = "") -> List[Dict[str, Any]]:
     """current: the user's record as {category: data}, used for "Now:" hints and
     table defaults. tables: the build supports `table` fields (dev branch)."""
     current = current or {}
@@ -273,6 +275,8 @@ def _section_fields(key, base, channels, live_groups, movie_groups, series_group
                              "Turn a category off to hide it. The user can show it again in AerioTV. "
                              + VOD_SCOPE_NOTE))
             out.extend(_show_switches(SHOW_MOVIES if movies else SHOW_SERIES, names))
+    elif key == "expand_profiles":
+        out.extend(_profile_fields(channels, tables, current, users_for_profiles or [], target))
     else:
         out.extend(app_settings_fields(current))
     return out
@@ -320,6 +324,7 @@ NATIVE_SECTIONS = (
     ("sec_live", "expand_live", "Live TV", False),
     ("sec_movies", "expand_movies", "Movies", True),
     ("sec_series", "expand_series", "TV Shows", True),
+    ("sec_profiles", "expand_profiles", "Profiles", True),
     ("sec_app", "expand_app", "App Settings", True),
 )
 
@@ -349,7 +354,8 @@ def _build_native(manifest_fields, *, usernames, saved, channels, live_groups, m
     for sec_id, key, title, collapsed in NATIVE_SECTIONS:
         out.append({"id": sec_id, "label": title, "type": "section", "collapsed": collapsed})
         for field in _section_fields(key, base, channels, live_groups, movie_groups, series_groups,
-                                     multiselect=True, tables=tables, current=current):
+                                     multiselect=True, tables=tables, current=current,
+                                     users_for_profiles=users, target=selected):
             field["section"] = sec_id
             out.append(field)
     # Dispatcharr renders fields outside a section above every section
@@ -445,3 +451,38 @@ def current_summary(key: str, current: Dict[str, Any]) -> Optional[str]:
         names = [r[2] or r[1] for r in rows if isinstance(r, list) and len(r) > 2]
         return f"{len(names)} profiles: {_names(names)}." if names else "No profiles yet."
     return None
+
+
+def _profile_fields(channels, tables: bool, current: Dict[str, Any], users: List[str],
+                    target: str) -> List[Dict[str, Any]]:
+    from . import profiles
+
+    if channels is None:
+        return [_info("profiles_note", "Lists", LISTS_NOTE)]
+    if not tables:
+        return [_info("profiles_note", "Profiles", "Profiles need a Dispatcharr build with table fields.")]
+    existing = (current.get("profiles") or {}).get("rows") or []
+    choice = lambda values, labels=None: [{"value": v, "label": (labels or {}).get(v, v.capitalize())} for v in values]
+    return [
+        _info("profiles_help", "Profiles",
+              "One row per profile on this user's devices, in order. The user is the default profile. "
+              "Devices offer these profiles; they are added only when someone picks them on a device. "
+              "Dispatcharr admins are always Admin. "
+              "A PIN is 4 to 6 digits for Numbers, or 4 to 6 of U, D, L, and R for Directions. "
+              "Leave PIN empty to keep the PIN already in the record. PINs are cleared from this page after Apply."),
+        {"id": profiles.TABLE, "label": "Profiles", "type": "table",
+         "default": profiles.table_defaults(target, existing),
+         "columns": [
+             {"id": "user", "label": "User", "type": "select", "options": [{"value": u, "label": u} for u in users]},
+             {"id": "name", "label": "Display name", "type": "string"},
+             {"id": "role", "label": "Role", "type": "select",
+              "options": choice(("user", "child"), {"user": "Standard", "child": "Child"})},
+             {"id": "icon", "label": "Icon", "type": "select",
+              "options": choice((profiles.DEFAULT_ICON,) + profiles.ICONS)},
+             {"id": "color", "label": "Color", "type": "select",
+              "options": choice((profiles.DEFAULT_COLOR,) + profiles.COLORS)},
+             {"id": "pin_type", "label": "PIN type", "type": "select",
+              "options": choice(profiles.PIN_TYPES)},
+             {"id": "pin", "label": "PIN", "type": "string"},
+         ]},
+    ]

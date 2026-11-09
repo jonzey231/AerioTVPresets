@@ -122,7 +122,8 @@ def test_native_sections():
     markers = [f for f in fields if f["type"] == "section"]
     assert [(m["id"], m["label"], m["collapsed"]) for m in markers] == [
         ("sec_live", "Live TV", False), ("sec_movies", "Movies", True),
-        ("sec_series", "TV Shows", True), ("sec_app", "App Settings", True), ("sec_apply", "Apply", False)]
+        ("sec_series", "TV Shows", True), ("sec_profiles", "Profiles", True), ("sec_app", "App Settings", True),
+        ("sec_apply", "Apply", False)]
     by_id = {f["id"]: f for f in fields}
     assert by_id["favorite_1"]["section"] == "sec_live"
     assert by_id["show_live:News"]["section"] == "sec_live"
@@ -140,7 +141,7 @@ def test_native_sections():
     assert top_ids[0:2] == ["intro", "target_username"] and ids[-1] == "apply_mode"
     for f in fields:
         if f["type"] != "section":
-            assert f.get("section") in (None, "sec_live", "sec_movies", "sec_series", "sec_app", "sec_apply")
+            assert f.get("section") in (None, "sec_live", "sec_movies", "sec_series", "sec_profiles", "sec_app", "sec_apply")
 
 
 def test_native_sections_before_a_user():

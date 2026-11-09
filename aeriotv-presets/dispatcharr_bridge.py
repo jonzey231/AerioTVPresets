@@ -197,3 +197,16 @@ def supports_tables() -> bool:
     from apps.plugins.serializers import PluginFieldSerializer
 
     return "table" in PluginFieldSerializer().fields["type"].choices
+
+
+def user_infos(usernames: List[str]) -> Dict[str, Any]:
+    """username -> (user id, is a Dispatcharr admin) for existing users.
+
+    Admin = superuser, staff, or user_level 10 or more (schema 4.12 role rule).
+    """
+    from apps.accounts.models import User
+
+    out: Dict[str, Any] = {}
+    for u in User.objects.filter(username__in=set(usernames)).only("id", "username", "user_level", "is_superuser", "is_staff"):
+        out[u.username] = (u.pk, bool(u.is_superuser or u.is_staff or (u.user_level or 0) >= 10))
+    return out

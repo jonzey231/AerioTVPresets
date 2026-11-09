@@ -11,9 +11,10 @@ import json
 import logging
 import os
 import re
+import time
 
 from . import dispatcharr_bridge as bridge
-from . import copying, options, schema, seed
+from . import copying, options, profiles, schema, seed
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(_HERE, "plugin.json"), "r", encoding="utf-8") as _fh:
@@ -119,7 +120,7 @@ class Plugin:
             raise ActionError("Unknown action.")
         try:
             return handler(settings, logger)
-        except (seed.SeedError, schema.SchemaError) as exc:
+        except (seed.SeedError, schema.SchemaError, profiles.ProfileError) as exc:
             logger.info("[AERIOTV-PRESETS] %s refused: %s", action, exc)
             raise ActionError(_sentence(str(exc))) from None
         except bridge.BridgeError as exc:
@@ -160,19 +161,33 @@ class Plugin:
 
     def _apply(self, settings, logger, *, write):
         request = seed.parse_settings(settings)
-        if not request.categories:
-            raise seed.SeedError("nothing to apply; set at least one section")
         primary = bridge.find_user(request.username)
+        table = settings.get(profiles.TABLE)
+        if isinstance(table, list) and table:
+            key = schema.user_key(primary.username)
+            record = bridge.read_record(primary, key) if key else None
+            sub = ((record or {}).get(schema.CATEGORIES) or {}).get(schema.PROFILES) if isinstance(record, dict) else None
+            existing = ((sub or {}).get("data") or {}).get("rows") or [] if isinstance(sub, dict) else []
+            names = [str(r.get("user")) for r in table if isinstance(r, dict) and r.get("user")]
+            rows = profiles.build_rows(table, target=primary.username,
+                                       users=bridge.user_infos(names + [primary.username]),
+                                       existing_rows=existing, now=int(time.time()))
+            if rows:
+                request.profiles = {"rows": rows}
+        if not request.categories and not request.profiles:
+            raise seed.SeedError("nothing to apply; set at least one section")
         also = settings.get(options.ALSO_USERS)
         names = [n for n in (also if isinstance(also, list) else []) if isinstance(n, str) and n and n != primary.username]
         targets = [primary] + [bridge.find_user(n) for n in dict.fromkeys(names)]
         if len(targets) == 1:
-            outcome = self._apply_one(primary, request, logger, write=write)
+            outcome = self._apply_one(primary, request, logger, write=write, primary=True)
+            if write and outcome["changed"] and request.profiles:
+                bridge.update_saved_settings(_plugin_keys(), {profiles.TABLE: profiles.clear_pins(table)})
             return {"status": "ok", "message": outcome["toast"]}
         changed = unchanged = failed = 0
         for user in targets:
             try:
-                outcome = self._apply_one(user, request, logger, write=write)
+                outcome = self._apply_one(user, request, logger, write=write, primary=user is primary)
             except (seed.SeedError, schema.SchemaError, bridge.BridgeError) as exc:
                 failed += 1
                 logger.info("[AERIOTV-PRESETS] %s for user %s failed: %s",
@@ -182,10 +197,12 @@ class Plugin:
                 changed += 1
             else:
                 unchanged += 1
+        if write and changed and request.profiles:
+            bridge.update_saved_settings(_plugin_keys(), {profiles.TABLE: profiles.clear_pins(table)})
         return {"status": "ok", "message": seed.many_toast(request.mode, write=write, changed=changed,
                                                            unchanged=unchanged, failed=failed)}
 
-    def _apply_one(self, user, request, logger, *, write):
+    def _apply_one(self, user, request, logger, *, write, primary=False):
         key = schema.user_key(user.username)
         if key is None:
             raise seed.SeedError("this user has no AerioTV record name")
@@ -193,7 +210,13 @@ class Plugin:
         cats, dropped_channels, dropped_groups = seed.scope_to_target(
             request.categories, channel_ids=[r["id"] for r in bridge.visible_channels(user)],
             live_groups=bridge.visible_group_names(user), movie_groups=vod["movie"], series_groups=vod["series"])
+        if primary and request.profiles:
+            # Profiles belong to the main User's devices only.
+            cats[schema.PROFILES] = request.profiles
         if not cats:
+            if not primary:
+                logger.info("[AERIOTV-PRESETS] nothing to write for user %s", user.pk)
+                return {"changed": False, "toast": ""}
             raise seed.SeedError(f"nothing {user.username} can use; run Refresh Lists")
 
         blocked, _legacy = seed.legacy_conflict(bridge.list_keys(user), key)

@@ -20,7 +20,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from . import app_settings, options, schema
+from . import app_settings, options, profiles, schema
 
 MODE_FILL = "fill"
 MODE_REPLACE = "replace"
@@ -41,6 +41,7 @@ class SeedRequest:
     username: str
     mode: str
     categories: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    profiles: Optional[Dict[str, Any]] = None
 
 
 def parse_channel_ids(text: Any) -> List[int]:
@@ -213,7 +214,9 @@ def merge(existing: Optional[Dict[str, Any]], seed: Dict[str, Dict[str, Any]], *
             result.kept.append(name)
             continue
         new_data = data
-        if name == schema.SETTINGS:
+        if name == schema.PROFILES:
+            new_data = profiles.merge_rows(prior.get("data") or {}, data.get("rows") or [])
+        elif name == schema.SETTINGS:
             new_data = copy.deepcopy(prior.get("data") or {})
             lane = dict(new_data.get("v") or {})
             lane.update(data.get("v", {}))
@@ -250,6 +253,8 @@ def summarize(record: Optional[Dict[str, Any]]) -> Dict[str, Any]:
             count = sum(len(data.get(k) or []) for k in schema.HIDDEN_GROUP_KINDS)
         elif name == schema.SETTINGS:
             count = sum(len(v) for v in data.values() if isinstance(v, dict))
+        elif name == schema.PROFILES:
+            count = len(data.get("rows") or [])
         else:
             count = None
         out["categories"][name] = count
@@ -291,6 +296,8 @@ def category_count(name: str, data: Dict[str, Any]) -> str:
         return f"hiddenGroups ({sum(len(data.get(k) or []) for k in schema.HIDDEN_GROUP_KINDS)})"
     if name == schema.SETTINGS:
         return f"settings ({sum(len(v) for v in data.values() if isinstance(v, dict))})"
+    if name == schema.PROFILES:
+        return f"profiles ({len(data.get('rows') or [])})"
     return name
 
 

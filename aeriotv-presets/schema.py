@@ -26,6 +26,7 @@ FAVORITES = "favorites"
 GROUP_ORDER = "groupOrder"
 HIDDEN_GROUPS = "hiddenGroups"
 SETTINGS = "settings"
+PROFILES = "profiles"
 PHASE1_CATEGORIES = (FAVORITES, GROUP_ORDER, HIDDEN_GROUPS, SETTINGS)
 
 # Caps from schema sections 4.1, 4.7, and 4.8.
@@ -185,7 +186,18 @@ def validate_settings(data: Any, *, strict_names: bool = False) -> Dict[str, Any
     return data
 
 
+def validate_profiles(data: Any) -> Dict[str, Any]:
+    """Section 4.12 rows (see profiles.py)."""
+    from . import profiles
+
+    try:
+        return profiles.validate(data)
+    except profiles.ProfileError as exc:
+        raise SchemaError(str(exc)) from exc
+
+
 VALIDATORS = {
+    PROFILES: validate_profiles,
     FAVORITES: validate_favorites,
     GROUP_ORDER: validate_group_order,
     HIDDEN_GROUPS: validate_hidden_groups,
@@ -196,7 +208,7 @@ VALIDATORS = {
 def validate_category_data(name: str, data: Any) -> Dict[str, Any]:
     validator = VALIDATORS.get(name)
     if validator is None:
-        raise SchemaError("category is not a phase 1 category")
+        raise SchemaError("category is not one this plugin writes")
     return validator(data)
 
 
