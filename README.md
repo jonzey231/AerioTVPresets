@@ -32,8 +32,9 @@ profiles). Group names are written as typed, exactly as the server names them.
 
 ## Install
 
-1. Download this repository and zip the `aeriotv-setup` folder:
-   `zip -r aeriotv-setup.zip aeriotv-setup -x '*__pycache__*'`
+1. Build the zip from a checkout: `scripts/build_zip.sh` writes
+   `dist/aeriotv-setup-plugin-<version>.zip` (one top-level `aeriotv-setup/` folder; the build is
+   byte-for-byte reproducible). Dispatcharr installs it under the plugin key `aeriotv_setup`.
 2. In Dispatcharr, open **Plugins**, choose **Import**, and upload the zip.
 3. Enable the plugin and accept the trust prompt. Plugins run as server code with full database
    access; this one reads users, channels, and groups, and writes App Data for the user you pick.
@@ -42,16 +43,27 @@ profiles). Group names are written as typed, exactly as the server names them.
 
 The plugin is not in the Dispatcharr plugin catalog yet.
 
-## Trying it with a test user
+## Testing
 
-1. In Dispatcharr, create a Standard user for testing (for example one named `plugin`) and assign
-   it a channel profile if you want a smaller channel list.
-2. In the plugin settings, pick that user, run **Show Channels**, and copy a few ids into Favorite
-   channels. Set a theme. Save.
-3. Run **Preview**, then **Apply** with Fill.
-4. Sign in to AerioTV on a device as that user with Dispatcharr Sync on. The device offers
-   Dispatcharr Sync on first launch and starts with those favorites and that theme.
-5. Run **Preview** again: Fill now reports that it keeps the device copy of each section.
+You need a Dispatcharr server, a Standard test user on it (for example one named `plugin`), and an
+AerioTV device that has never signed in as that user.
+
+1. On a computer, run `scripts/build_zip.sh` in this repository to build the zip.
+2. In the Dispatcharr web UI, open Plugins, choose Import, and upload the zip.
+3. Turn the AerioTV Setup plugin on and accept the trust prompt.
+4. In the plugin settings, set User to the test user and save.
+5. Run Show Channels. Expected: a list of `id: number name [group]` lines for channels that user
+   can see.
+6. Copy two ids from that list into Favorite channels, separated by a comma.
+7. Set Group order to Manual and type two or three group names from Show Groups, one per line, in
+   the order you want. Leave Apply mode on Fill. Save.
+8. Run Preview. Expected: "Preview (fill): adds favorites, groupOrder" and "no AerioTV record yet".
+9. Run Apply and confirm. Expected: "Applied (fill): adds favorites, groupOrder".
+10. Run Preview again. Expected: it now says it keeps the device copy of favorites and groupOrder.
+11. On the AerioTV device, add the Dispatcharr server and sign in as the test user.
+12. Expected: AerioTV offers Dispatcharr Sync during first launch. Choose Turn On.
+13. Expected: Live TV shows the two favorites in the order you entered, and the groups you listed
+    lead the group list in that order.
 
 ## Phase plan
 
