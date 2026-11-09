@@ -137,6 +137,7 @@ repository's release zip with `{version}`, plus a pull request titled `[aeriotv-
 
 ## Changelog
 
+- 0.0.2: the catalog manifest also declares the Load, Preview, and Apply actions for `manifest_version` 1; the plugin itself is unchanged.
 - 0.0.1: first public release. Earlier internal builds were numbered 0.1.x and named AerioTV Setup; their saved settings carry over.
 
 ## License
