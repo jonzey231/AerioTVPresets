@@ -58,11 +58,13 @@ def _live_fields():
     except Exception:
         return options.build_fields(manifest_fields, usernames=None)
     saved = {}
-    native = False
+    native = tables = False
     try:
         native = bridge.supports_sections()
+        tables = bridge.supports_tables()
     except Exception:
-        native = False
+        native = tables = False
+    current = {}
     channels = live = None
     vod = {"movie": [], "series": []}
     try:
@@ -73,6 +75,14 @@ def _live_fields():
             channels = bridge.visible_channels(user)
             live = bridge.visible_group_names(user)
             vod = bridge.vod_group_names(user)
+            try:
+                key = schema.user_key(user.username)
+                record = bridge.read_record(user, key) if key else None
+                cats = (record or {}).get(schema.CATEGORIES) if isinstance(record, dict) else None
+                current = {name: (sub.get("data") or {}) for name, sub in (cats or {}).items()
+                           if isinstance(sub, dict) and isinstance(sub.get("data"), dict)}
+            except Exception:
+                current = {}
     except Exception:
         _log.warning("[AERIOTV-PRESETS] could not load lists for the chosen user")
         channels = live = None
@@ -80,7 +90,7 @@ def _live_fields():
         manifest_fields, usernames=names, saved=saved,
         channels=channels, live_groups=live,
         movie_groups=vod.get("movie"), series_groups=vod.get("series"),
-        native_sections=native,
+        native_sections=native, tables=tables, current=current,
     )
 
 
@@ -146,7 +156,7 @@ class Plugin:
             visible = {row["id"] for row in bridge.visible_channels(user)}
             unknown = [i for i in fav["ids"] if i not in visible]
             if unknown:
-                raise seed.SeedError(f"{len(unknown)} favorite(s) are not channels {user.username} can see; run Load")
+                raise seed.SeedError(f"{len(unknown)} favorite(s) are not channels {user.username} can see; run Refresh Lists")
 
         hidden = request.categories.get(schema.HIDDEN_GROUPS)
         if hidden:

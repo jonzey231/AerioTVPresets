@@ -154,19 +154,15 @@ def request_field_refresh() -> None:
     shared .reload_token file is newer than the worker's last reload. Touching
     that token is what PluginManager._touch_reload_token does.
     """
-    import os
-
     from apps.plugins.loader import PluginManager
 
     pm = PluginManager.get()
     touch = getattr(pm, "_touch_reload_token", None)
     if callable(touch):
+        # Dispatcharr's own code writes the token, so the plugin needs no
+        # filesystem_write capability. Without the helper, lists refresh on
+        # the next plugin reload instead.
         touch()
-        return
-    path = os.path.join(pm.plugins_dir, ".reload_token")
-    with open(path, "a", encoding="utf-8"):
-        pass
-    os.utime(path, None)
 
 
 def supports_sections() -> bool:
@@ -179,3 +175,10 @@ def supports_sections() -> bool:
     from apps.plugins.serializers import PluginFieldSerializer
 
     return "section" in PluginFieldSerializer().fields["type"].choices
+
+
+def supports_tables() -> bool:
+    """True when this Dispatcharr accepts `table` fields (dev branch serializers.py:40)."""
+    from apps.plugins.serializers import PluginFieldSerializer
+
+    return "table" in PluginFieldSerializer().fields["type"].choices

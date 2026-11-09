@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "AerioTV Presets",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Preconfigure a user's AerioTV favorites, group order, hidden groups, and settings. Their AerioTV devices offer Dispatcharr Sync on first launch and start from this setup. Requires AerioTV 1.8.45 or newer on Apple devices and AerioTV for Android 0.5.14 or newer.",
   "author": "jonzey231",
   "license": "AGPL-3.0-or-later",
@@ -13,7 +13,7 @@
       "id": "intro",
       "type": "info",
       "label": "How it works",
-      "description": "1. Choose a user and the sections to expand, Save, run Load, then reload this page. 2. Make your choices in each section and Save. 3. Run Preview, then Apply. Anything left on Leave empty or Leave as is is not written. Collapsed sections keep their saved choices."
+      "description": "1. Choose a user and the sections to expand, Save, run Refresh Lists, then reload this page. 2. Make your choices in each section and Save. 3. Run Preview, then Apply. Anything left on Leave empty or Leave as is is not written. Collapsed sections keep their saved choices."
     },
     {
       "id": "target_username",
@@ -90,9 +90,9 @@
   "actions": [
     {
       "id": "load_lists",
-      "label": "Load",
-      "description": "Builds the channel and group lists for the chosen user. Save first, run this, then reload the page.",
-      "button_label": "Load",
+      "label": "Refresh Lists",
+      "description": "Only needed after choosing a different user, or when channels or groups change: rebuilds the lists. Save first, run this, then reload the page.",
+      "button_label": "Refresh",
       "button_variant": "filled"
     },
     {
@@ -116,5 +116,7 @@
       }
     }
   ],
-  "capabilities": []
+  "capabilities": [
+    "user_data"
+  ]
 }

@@ -40,23 +40,24 @@ and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 1. Open the plugin's settings and choose the user in the User list.
 2. Save.
-3. Run Load. Dispatcharr only reads a plugin's lists when it loads the plugin, so Load asks it to
-   rebuild them for that user.
-4. Reload the page. The sections now hold that user's channels and groups.
+3. Run Refresh Lists, then reload the page. Dispatcharr only reads a plugin's lists when it loads
+   the plugin; the plugin builds them for the saved user every time it loads, so this step is only
+   needed after choosing a different user or when channels or groups change.
+4. The sections now hold that user's channels and groups, start from what the user's record holds
+   now, and show "In the record now" under each setting the record already has.
 5. Make your choices in Live TV, Movies, TV Shows, and App Settings. Anything left on Leave empty
    or Leave as is is not written.
 6. In Apply, pick Fill or Replace, then Save.
 7. Run Preview. It reports what Apply would write, in one line.
 8. Run Apply and confirm.
 
-Run Load again (and reload) after choosing a different user, or after channels or groups change.
 
 ## What each section writes
 
 | Section | Choices | Written to |
 |---|---|---|
-| Live TV | Favorite 1 to 10 (shown as `number name [group]`) | `favorites`, in slot order |
-| Live TV | Group order (Server order, Alphabetical, or Manual) and Group position 1 to 8 | `groupOrder` |
+| Live TV | Favorite channels table, one row per channel (shown as `number name [group]`) | `favorites`, in row order |
+| Live TV | Group order (Server order, Alphabetical, or Manual) and a Manual group order table | `groupOrder` |
 | Live TV | Default group | `settings` (`defaultGroup`) |
 | Live TV | A Show switch per group, or one Hidden Live TV groups list past 25 groups | `hiddenGroups.live` |
 | Movies | Hidden movie categories list | `hiddenGroups.movies` |
@@ -89,8 +90,8 @@ Fill and Replace:
 1. Movie and series category lists are server-wide: every category enabled on an active M3U
    account, limited to the types the user may watch. Dispatcharr has no per-user category rule
    beyond that, and categories carry no adult flag.
-2. Lists refresh only through Load and a page reload.
-3. 10 favorite slots and 8 group positions.
+2. Lists refresh when the plugin loads, or through Refresh Lists and a page reload.
+3. Builds without table fields show 10 favorite slots and 8 group positions instead of tables.
 4. Guide days is not part of the AerioTV settings that sync, so it is not offered.
 5. App Settings offers settings with a fixed set of values. Number settings offer common values
    within the allowed ranges. Free text, colors, and sort orders are not offered.
@@ -120,8 +121,8 @@ scripts/build_zip.sh
 
 Layout:
 
-- `aeriotv-presets/plugin.json`: manifest (catalog format, `manifest_version` 1, no capabilities).
-- `aeriotv-presets/plugin.py`: the `Plugin` class and the Load, Preview, and Apply actions.
+- `aeriotv-presets/plugin.json`: manifest (catalog format, `manifest_version` 1, capability `user_data`).
+- `aeriotv-presets/plugin.py`: the `Plugin` class and the Refresh Lists, Preview, and Apply actions.
 - `aeriotv-presets/options.py`: builds the settings fields and sections. No Django.
 - `aeriotv-presets/app_settings.py`: the App Settings choices and their stored values. No Django.
 - `aeriotv-presets/schema.py`: record shapes, validation, and the record key rule. No Django.
@@ -138,6 +139,7 @@ repository's release zip with `{version}`, plus a pull request titled `[aeriotv-
 
 ## Changelog
 
+- 0.0.4: favorites and manual group order are tables that start from the record; settings show the value in the record now; lists build when the plugin loads, so Load becomes Refresh Lists; declares the `user_data` capability.
 - 0.0.3: the description names the minimum AerioTV versions.
 - 0.0.2: the catalog manifest also declares the Load, Preview, and Apply actions for `manifest_version` 1; the plugin itself is unchanged.
 - 0.0.1: first public release. Earlier internal builds were numbered 0.1.x and named AerioTV Setup; their saved settings carry over.

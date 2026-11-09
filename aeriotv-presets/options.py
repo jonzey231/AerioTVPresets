@@ -101,7 +101,7 @@ def expanded(saved: Dict[str, Any]) -> Dict[str, bool]:
     return out
 
 
-def app_settings_fields() -> List[Dict[str, Any]]:
+def app_settings_fields(current: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     fields: List[Dict[str, Any]] = []
     for title, rows in app_settings.SPEC:
         fields.append(_info("app_hdr:" + title, title))
@@ -110,14 +110,21 @@ def app_settings_fields() -> List[Dict[str, Any]]:
                 choices = [{"value": "true", "label": "On"}, {"value": "false", "label": "Off"}]
             else:
                 choices = [{"value": app_settings.option_value(v), "label": l} for v, l in opts]
-            fields.append(_select(app_settings.field_id(name), label, [dict(LEAVE_AS_IS)] + choices))
+            field = _select(app_settings.field_id(name), label, [dict(LEAVE_AS_IS)] + choices)
+            now = _setting_now(current or {}, name)
+            if name == "appearanceMode" and now == "dark" and _setting_now(current or {}, "trueBlack") is True:
+                now = "True Black"
+            elif opts and now is not None:
+                now = next((l for v, l in opts if v == now and type(v) is type(now)), now)
+            fields.append(_with_now(field, now))
     return fields
 
 
 def build_fields(manifest_fields: List[Dict[str, Any]], *, usernames: Optional[List[str]],
                  saved: Optional[Dict[str, Any]] = None, channels: Optional[List[Dict[str, Any]]] = None,
                  live_groups: Optional[List[str]] = None, movie_groups: Optional[List[str]] = None,
-                 series_groups: Optional[List[str]] = None, native_sections: bool = False) -> List[Dict[str, Any]]:
+                 series_groups: Optional[List[str]] = None, native_sections: bool = False,
+                 tables: bool = False, current: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """Return the full field list.
 
     usernames None means the database was not reachable: the manifest fields
@@ -131,7 +138,8 @@ def build_fields(manifest_fields: List[Dict[str, Any]], *, usernames: Optional[L
     """
     if native_sections:
         return _build_native(manifest_fields, usernames=usernames, saved=saved, channels=channels,
-                             live_groups=live_groups, movie_groups=movie_groups, series_groups=series_groups)
+                             live_groups=live_groups, movie_groups=movie_groups, series_groups=series_groups,
+                             tables=tables, current=current)
     if usernames is None:
         return [copy.deepcopy(f) for f in manifest_fields]
     base = {f["id"]: copy.deepcopy(f) for f in manifest_fields}
@@ -154,7 +162,7 @@ def build_fields(manifest_fields: List[Dict[str, Any]], *, usernames: Optional[L
     for key, title in SECTIONS:
         if not open_[key]:
             out.append(_info("hdr:" + key, f"{title} (collapsed)",
-                             f"Turn on Expand {title}, Save, and run Load to edit. Saved choices still apply."))
+                             f"Turn on Expand {title}, Save, and run Refresh Lists to edit. Saved choices still apply."))
             continue
         out.append(_info("hdr:" + key, title))
         out.extend(_section_fields(key, base, channels, live_groups, movie_groups, series_groups))
@@ -190,23 +198,33 @@ def _multiselect(fid: str, label: str, names: Iterable[str], help_text: str) -> 
 
 
 def _section_fields(key, base, channels, live_groups, movie_groups, series_groups,
-                    multiselect: bool = False) -> List[Dict[str, Any]]:
+                    multiselect: bool = False, tables: bool = False,
+                    current: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    """current: the user's record as {category: data}, used for "Now:" hints and
+    table defaults. tables: the build supports `table` fields (dev branch)."""
+    current = current or {}
     out: List[Dict[str, Any]] = []
     if key == "expand_live":
         if channels is None:
-            out.append(_info("live_note", "Lists", "Choose a user, Save, then run Load and reload the page to fill these lists."))
+            out.append(_info("live_note", "Lists", "Choose a user, Save, then run Refresh Lists and reload the page to fill these lists."))
             out.append(base["group_order_mode"])
             return out
         live_opts = name_options(live_groups or [], LEAVE_EMPTY)
-        out.append(_info("favorites_note", "Favorite channels", "In display order. Leave empty to skip a slot."))
         chan_opts = channel_options(channels)
-        for i, fid in enumerate(slot_ids("favorite", FAVORITE_SLOTS), 1):
-            out.append(_select(fid, f"Favorite {i}", chan_opts))
-        out.append(base["group_order_mode"])
-        for i, fid in enumerate(slot_ids("group", GROUP_ORDER_SLOTS), 1):
-            out.append(_select(fid, f"Group position {i}", live_opts))
-        out.append(_select("default_group", "Default group", name_options(live_groups or [], LEAVE_AS_IS),
-                           "The Live TV group AerioTV opens to."))
+        if tables:
+            out.append(_favorites_table(chan_opts, current.get("favorites") or {}))
+            out.append(_with_now(base["group_order_mode"], (current.get("groupOrder") or {}).get("mode")))
+            out.append(_group_table(live_opts, current.get("groupOrder") or {}))
+        else:
+            out.append(_info("favorites_note", "Favorite channels", "In display order. Leave empty to skip a slot."))
+            for i, fid in enumerate(slot_ids("favorite", FAVORITE_SLOTS), 1):
+                out.append(_select(fid, f"Favorite {i}", chan_opts))
+            out.append(base["group_order_mode"])
+            for i, fid in enumerate(slot_ids("group", GROUP_ORDER_SLOTS), 1):
+                out.append(_select(fid, f"Group position {i}", live_opts))
+        out.append(_with_now(_select("default_group", "Default group", name_options(live_groups or [], LEAVE_AS_IS),
+                                     "The Live TV group AerioTV opens to."),
+                             _setting_now(current, "defaultGroup")))
         if multiselect and len(live_groups or []) > LIVE_SWITCH_LIMIT:
             out.append(_multiselect(HIDDEN_LIVE, "Hidden Live TV groups", live_groups or [],
                                     "Pick the groups to hide. The user can show them again in AerioTV."))
@@ -219,7 +237,7 @@ def _section_fields(key, base, channels, live_groups, movie_groups, series_group
         names = (movie_groups if movies else series_groups) or []
         if channels is None:
             out.append(_info("movies_note" if movies else "series_note", "Lists",
-                             "Choose a user, Save, then run Load and reload the page to fill these lists."))
+                             "Choose a user, Save, then run Refresh Lists and reload the page to fill these lists."))
         elif multiselect:
             out.append(_multiselect(HIDDEN_MOVIES if movies else HIDDEN_SERIES,
                                     "Hidden movie categories" if movies else "Hidden series categories", names,
@@ -232,8 +250,45 @@ def _section_fields(key, base, channels, live_groups, movie_groups, series_group
                              + VOD_SCOPE_NOTE))
             out.extend(_show_switches(SHOW_MOVIES if movies else SHOW_SERIES, names))
     else:
-        out.extend(app_settings_fields())
+        out.extend(app_settings_fields(current))
     return out
+
+
+FAVORITES_TABLE = "favorites_rows"
+GROUP_ORDER_TABLE = "group_order_rows"
+
+
+def _favorites_table(chan_opts: List[Dict[str, str]], now: Dict[str, Any]) -> Dict[str, Any]:
+    known = {o["value"] for o in chan_opts}
+    rows = [{"channel": str(i)} for i in (now.get("ids") or []) if str(i) in known]
+    return {"id": FAVORITES_TABLE, "label": "Favorite channels", "type": "table",
+            "help_text": "One row per favorite, in display order. Starts from what the record holds now.",
+            "default": rows,
+            "columns": [{"id": "channel", "label": "Channel", "type": "select", "options": chan_opts[1:]}]}
+
+
+def _group_table(live_opts: List[Dict[str, str]], now: Dict[str, Any]) -> Dict[str, Any]:
+    known = {o["value"] for o in live_opts}
+    rows = [{"group": g} for g in (now.get("order") or []) if g in known] if now.get("mode") == "manual" else []
+    return {"id": GROUP_ORDER_TABLE, "label": "Manual group order", "type": "table",
+            "help_text": "One row per group, first to last. Used when Group order is Manual.",
+            "default": rows,
+            "columns": [{"id": "group", "label": "Group", "type": "select", "options": live_opts[1:]}]}
+
+
+def _setting_now(current: Dict[str, Any], name: str) -> Any:
+    lane = ((current.get("settings") or {}).get("v")) or {}
+    return lane.get(name)
+
+
+def _with_now(field: Dict[str, Any], value: Any) -> Dict[str, Any]:
+    """Add "In the record now: <value>" to a field's help text."""
+    if value is None or value == "":
+        return field
+    shown = ("On" if value else "Off") if isinstance(value, bool) else str(value)
+    note = f"In the record now: {shown}."
+    field["help_text"] = (field.get("help_text", "") + " " + note).strip()
+    return field
 
 
 # Native section ids and their collapsed default (Live TV open, the rest closed).
@@ -245,14 +300,15 @@ NATIVE_SECTIONS = (
 )
 
 
-def _build_native(manifest_fields, *, usernames, saved, channels, live_groups, movie_groups, series_groups):
+def _build_native(manifest_fields, *, usernames, saved, channels, live_groups, movie_groups, series_groups,
+                  tables=False, current=None):
     base = {f["id"]: copy.deepcopy(f) for f in manifest_fields}
     saved = saved or {}
     selected = str(saved.get("target_username") or "").strip()
     if selected == NONE:
         selected = ""
     intro = base["intro"]
-    intro["description"] = ("1. Choose a user, Save, run Load, then reload this page. 2. Make your choices in each "
+    intro["description"] = ("1. Choose a user, Save, run Refresh Lists, then reload this page. 2. Make your choices in each "
                             "section and Save. 3. Run Preview, then Apply. Anything left on Leave empty or Leave as "
                             "is is not written.")
     out: List[Dict[str, Any]] = [intro]
@@ -265,7 +321,7 @@ def _build_native(manifest_fields, *, usernames, saved, channels, live_groups, m
     for sec_id, key, title, collapsed in NATIVE_SECTIONS:
         out.append({"id": sec_id, "label": title, "type": "section", "collapsed": collapsed})
         for field in _section_fields(key, base, channels, live_groups, movie_groups, series_groups,
-                                     multiselect=True):
+                                     multiselect=True, tables=tables, current=current):
             field["section"] = sec_id
             out.append(field)
     # Dispatcharr renders fields outside a section above every section

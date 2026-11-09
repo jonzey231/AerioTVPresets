@@ -167,7 +167,7 @@ def test_multiselect_picks_map_to_hidden_groups():
 def test_notes_before_load():
     fields = options.build_fields(MANIFEST["fields"], usernames=["plugin"], native_sections=True)
     by_id = {f["id"]: f for f in fields}
-    text = "Choose a user, Save, then run Load and reload the page to fill these lists."
+    text = "Choose a user, Save, then run Refresh Lists and reload the page to fill these lists."
     assert by_id["live_note"]["description"] == text
     assert by_id["movies_note"]["description"] == text and by_id["movies_note"]["section"] == "sec_movies"
 
@@ -176,3 +176,38 @@ def test_apply_mode_wording():
     labels = [o["label"] for o in next(f for f in MANIFEST["fields"] if f["id"] == "apply_mode")["options"]]
     assert labels == ["Fill: only add what the record does not have yet",
                       "Replace: overwrite the sections you set here"]
+
+
+CURRENT = {"favorites": {"ids": [77, 999]}, "groupOrder": {"mode": "manual", "order": ["Sports", "Gone"]},
+           "settings": {"v": {"selectedTheme": "Light", "appearanceMode": "dark", "trueBlack": True,
+                              "liveRewindEnabled": False, "defaultGroup": "News"}}}
+
+
+def tables_build():
+    return options.build_fields(MANIFEST["fields"], usernames=["plugin"], saved={"target_username": "plugin"},
+                                channels=CHANNELS, live_groups=["News", "Sports"], movie_groups=[],
+                                series_groups=[], native_sections=True, tables=True, current=CURRENT)
+
+
+def test_tables_replace_slots_and_start_from_the_record():
+    by_id = {f["id"]: f for f in tables_build()}
+    assert not any(i.startswith("favorite_") or (i.startswith("group_") and i[6:].isdigit()) for i in by_id)
+    fav = by_id[options.FAVORITES_TABLE]
+    assert fav["type"] == "table" and fav["section"] == "sec_live"
+    assert fav["default"] == [{"channel": "77"}]  # 999 is not visible to the user
+    col = fav["columns"][0]
+    assert (col["id"], col["type"]) == ("channel", "select")
+    assert all(o["value"] != options.NONE for o in col["options"])
+    grp = by_id[options.GROUP_ORDER_TABLE]
+    assert grp["default"] == [{"group": "Sports"}]
+    assert grp["columns"][0]["options"] == [{"value": "News", "label": "News"}, {"value": "Sports", "label": "Sports"}]
+
+
+def test_now_hints_show_record_values():
+    by_id = {f["id"]: f for f in tables_build()}
+    assert by_id["set:selectedTheme"]["help_text"] == "In the record now: Slate."
+    assert by_id["set:appearanceMode"]["help_text"] == "In the record now: True Black."
+    assert by_id["set:liveRewindEnabled"]["help_text"] == "In the record now: Off."
+    assert by_id["default_group"]["help_text"].endswith("In the record now: News.")
+    assert by_id["group_order_mode"]["help_text"] == "In the record now: manual."
+    assert "help_text" not in by_id["set:skipBack"]

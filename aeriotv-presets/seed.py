@@ -87,6 +87,22 @@ def _slots(settings: Dict[str, Any], prefix: str) -> List[str]:
     return out
 
 
+def _table_values(settings: Dict[str, Any], fid: str, column: str) -> Optional[List[str]]:
+    """Values of one column of a table field, in row order, blanks and repeats
+    dropped. None when the table is not in the settings (builds without tables)."""
+    rows = settings.get(fid)
+    if not isinstance(rows, list):
+        return None
+    out: List[str] = []
+    for row in rows:
+        if isinstance(row, dict):
+            value = row.get(column)
+            value = "" if value is None else str(value).strip()
+            if value and value != NONE and value not in out:
+                out.append(value)
+    return out
+
+
 def parse_settings(settings: Dict[str, Any]) -> SeedRequest:
     """Build a SeedRequest from the plugin's saved settings.
 
@@ -106,11 +122,13 @@ def parse_settings(settings: Dict[str, Any]) -> SeedRequest:
 
     cats: Dict[str, Dict[str, Any]] = {}
 
-    ids = parse_channel_ids(" ".join(_slots(settings, "favorite")))
+    table_ids = _table_values(settings, options.FAVORITES_TABLE, "channel")
+    ids = parse_channel_ids(" ".join(table_ids if table_ids is not None else _slots(settings, "favorite")))
     if ids:
         cats[schema.FAVORITES] = {"ids": ids}
 
-    order = _slots(settings, "group")
+    table_order = _table_values(settings, options.GROUP_ORDER_TABLE, "group")
+    order = table_order if table_order is not None else _slots(settings, "group")
     order_mode = _value(settings, "group_order_mode")
     if order_mode:
         if order_mode == "manual" and not order:
