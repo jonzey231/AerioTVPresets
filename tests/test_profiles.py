@@ -1,31 +1,13 @@
-import hashlib
-
 import pytest
 
 from aeriotv_presets import options, profiles, schema, seed
 
 USERS = {"dad": (1, True), "kid": (7, False), "mom": (3, False)}
-SALTS = iter([bytes(range(16)), bytes(range(16, 32)), bytes(range(32, 48))])
-
-
 def build(table, existing=None):
-    return profiles.build_rows(table, target="dad", users=USERS, existing_rows=existing or [], now=1700000000,
-                               salt=lambda: next(SALTS))
-
-
-def test_pin_hash_matches_the_schema_rule():
-    salt = bytes(range(16))
-    assert profiles.hash_pin("UULR", salt) == hashlib.sha256(salt + b"UULR").hexdigest()
-    assert profiles.normalize_pin("directions", "u u l r") == "UULR"
-    assert profiles.normalize_pin("numbers", "1234") == "1234"
-    for bad in (("numbers", "12"), ("numbers", "1234567"), ("numbers", "12a4"), ("directions", "UUX R")):
-        with pytest.raises(profiles.ProfileError):
-            profiles.normalize_pin(*bad)
+    return profiles.build_rows(table, target="dad", users=USERS, existing_rows=existing or [], now=1700000000)
 
 
 def test_rows_shape_roles_and_default_profile():
-    global SALTS
-    SALTS = iter([bytes(range(16)), bytes(range(16, 32))])
     rows = build([{"user": "kid", "name": "Kids", "role": "child", "icon": "paw", "color": "orange",
                    "pin_type": "none", "pin": ""},
                   {"user": "dad", "name": "", "role": "child", "icon": "default", "color": "default",
@@ -34,7 +16,7 @@ def test_rows_shape_roles_and_default_profile():
     kid, dad = rows
     assert kid == [7, "kid", "Kids", "none", "", "", "child", 1700000000, {"icon": "paw", "color": "orange"}, 0]
     assert dad[6] == "admin" and dad[2] == "dad" and dad[8] == {} and dad[9] == 1
-    assert dad[5] == bytes(range(16)).hex() and dad[4] == hashlib.sha256(bytes(range(16)) + b"2468").hexdigest()
+    assert dad[3:6] == ["none", "", ""]
     assert schema.validate_profiles({"rows": rows})
 
 
@@ -43,17 +25,11 @@ def test_target_is_added_as_the_default_profile():
     assert [r[1] for r in rows] == ["dad", "mom"] and rows[0][9] == 0
 
 
-def test_child_needs_pins_on_the_others():
-    with pytest.raises(profiles.ProfileError, match="every other profile needs a PIN: dad"):
-        build([{"user": "kid", "role": "child", "pin_type": "none"}])
-
-
-def test_empty_pin_keeps_the_record_pin():
+def test_no_pin_is_written_and_a_device_pin_stays():
     old = [[1, "dad", "Dad", "numbers", "a" * 64, "b" * 32, "admin", 5, {}, 0]]
-    rows = build([{"user": "dad", "pin_type": "numbers", "pin": ""}], existing=old)
-    assert rows[0][4:6] == ["a" * 64, "b" * 32]
-    with pytest.raises(profiles.ProfileError, match="enter a PIN for dad"):
-        build([{"user": "dad", "pin_type": "directions", "pin": ""}], existing=old)
+    rows = build([{"user": "dad", "pin_type": "numbers", "pin": "1234"}, {"user": "kid", "role": "child"}], existing=old)
+    assert rows[0][3:6] == ["numbers", "a" * 64, "b" * 32]
+    assert rows[1][3:6] == ["none", "", ""] and rows[1][6] == "child"
 
 
 def test_unknown_and_repeated_users():
@@ -82,14 +58,13 @@ def test_fill_and_replace_through_seed_merge():
     assert seed.category_count("profiles", {"rows": rows}) == "profiles (1)"
 
 
-def test_table_defaults_and_cleared_pins():
+def test_table_defaults():
     old = [[3, "mom", "Mom", "numbers", "a" * 64, "b" * 32, "user", 5, {"icon": "cat"}, 1],
            [1, "dad", "Dad", "none", "", "", "admin", 5, {}, 0]]
     rows = profiles.table_defaults("dad", old)
     assert [r["user"] for r in rows] == ["dad", "mom"]
     assert profiles.table_defaults("dad", []) == []
-    assert rows[1]["icon"] == "cat" and rows[1]["pin"] == "" and rows[1]["pin_type"] == "numbers"
-    assert profiles.clear_pins([{"user": "a", "pin": "1234"}]) == [{"user": "a", "pin": ""}]
+    assert rows[1]["icon"] == "cat" and "pin" not in rows[1] and "pin_type" not in rows[1]
 
 
 def test_profiles_section_fields():
@@ -100,7 +75,8 @@ def test_profiles_section_fields():
     by_id = {f["id"]: f for f in fields}
     table = by_id[profiles.TABLE]
     assert table["section"] == "sec_profiles"
-    assert [c["id"] for c in table["columns"]] == ["user", "name", "role", "icon", "color", "pin_type", "pin"]
+    assert [c["id"] for c in table["columns"]] == ["user", "name", "role", "icon", "color"]
+    assert table["label"] == "" and by_id["profiles_help"]["label"] == ""
     assert table["default"] == []
     marker = by_id["sec_profiles"]
     assert marker["collapsed"] is True

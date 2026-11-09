@@ -469,13 +469,11 @@ def _profile_fields(channels, tables: bool, current: Dict[str, Any], users: List
     existing = (current.get("profiles") or {}).get("rows") or []
     choice = lambda values, labels=None: [{"value": v, "label": (labels or {}).get(v, v.capitalize())} for v in values]
     return [
-        _info("profiles_help", "Profiles",
+        _info("profiles_help", "",
               "One row per profile on this user's devices, in order. The user is the default profile. "
               "Devices offer these profiles; they are added only when someone picks them on a device. "
-              "Dispatcharr admins are always Admin. "
-              "A PIN is 4 to 6 digits for Numbers, or 4 to 6 of U, D, L, and R for Directions. "
-              "Leave PIN empty to keep the PIN already in the record. PINs are cleared from this page after Apply."),
-        {"id": profiles.TABLE, "label": "Profiles", "type": "table",
+              "Dispatcharr admins are always Admin. Set PINs on the device."),
+        {"id": profiles.TABLE, "label": "", "type": "table",
          "default": profiles.table_defaults(target, existing),
          "columns": [
              {"id": "user", "label": "User", "type": "select", "options": [{"value": u, "label": u} for u in users]},
@@ -486,8 +484,5 @@ def _profile_fields(channels, tables: bool, current: Dict[str, Any], users: List
               "options": choice((profiles.DEFAULT_ICON,) + profiles.ICONS)},
              {"id": "color", "label": "Color", "type": "select",
               "options": choice((profiles.DEFAULT_COLOR,) + profiles.COLORS)},
-             {"id": "pin_type", "label": "PIN type", "type": "select",
-              "options": choice(profiles.PIN_TYPES)},
-             {"id": "pin", "label": "PIN", "type": "string"},
          ]},
     ]

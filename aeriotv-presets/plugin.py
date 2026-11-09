@@ -196,8 +196,6 @@ class Plugin:
         targets = [primary] + [bridge.find_user(n) for n in dict.fromkeys(names)]
         if len(targets) == 1:
             outcome = self._apply_one(primary, request, logger, write=write, primary=True)
-            if write and outcome["changed"] and request.profiles:
-                bridge.update_saved_settings(_plugin_keys(), {profiles.TABLE: profiles.clear_pins(table)})
             return {"status": "ok", "message": outcome["toast"]}
         changed = unchanged = failed = 0
         for user in targets:
@@ -212,8 +210,6 @@ class Plugin:
                 changed += 1
             else:
                 unchanged += 1
-        if write and changed and request.profiles:
-            bridge.update_saved_settings(_plugin_keys(), {profiles.TABLE: profiles.clear_pins(table)})
         return {"status": "ok", "message": seed.many_toast(request.mode, write=write, changed=changed,
                                                            unchanged=unchanged, failed=failed)}
 

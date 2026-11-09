@@ -73,7 +73,7 @@ user. Run it again when channels or groups change.
 | Live TV | A Show switch per group, or one Hidden Live TV groups list past 25 groups | `hiddenGroups.live` |
 | Movies | Hidden movie categories list | `hiddenGroups.movies` |
 | TV Shows | Hidden series categories list | `hiddenGroups.series` |
-| Profiles | Profiles table: user, display name, role (Standard or Child), icon, color, PIN type, and PIN, one row per profile in order | `profiles` (main User only) |
+| Profiles | Profiles table: user, display name, role (Standard or Child), icon, and color, one row per profile in order | `profiles` (main User only) |
 | App Settings | Appearance, startup, Live TV and guide, player, Multiview, Movies, TV Shows, and DVR, and TV remote settings | `settings` (all devices) |
 | Apply | Fill or Replace | how the record is merged |
 
@@ -94,12 +94,10 @@ Profiles:
 
 1. The User is always the default profile. Dispatcharr admins are always Admin; other users are
    Standard or Child.
-2. A PIN is 4 to 6 digits (Numbers) or 4 to 6 of U, D, L, and R (Directions). It is stored only as a
-   salted SHA-256, the same way the apps store it. Leave a PIN empty to keep the one in the record.
-   PINs are cleared from the plugin page after a successful Apply.
-3. While any profile is a Child, every other profile needs a PIN.
-4. Devices offer these profiles; a profile is added on a device only when someone picks it there.
-5. The Profiles table needs a Dispatcharr build with table fields.
+2. The plugin does not set PINs. A new profile has no PIN, and the user sets one on a device. A PIN a
+   device already saved for a profile stays as it is.
+3. Devices offer these profiles; a profile is added on a device only when someone picks it there.
+4. The Profiles table needs a Dispatcharr build with table fields.
 
 ## How AerioTV picks it up
 
@@ -124,7 +122,7 @@ Profiles:
 
 ## Privacy
 
-The plugin logs user ids, counts, modes, and record sizes. PINs are never logged or kept after Apply. It never logs channel names, group
+The plugin logs user ids, counts, modes, and record sizes. It never logs channel names, group
 names, setting values, or record keys. It makes no network calls.
 
 ## Open items
@@ -151,7 +149,7 @@ Layout:
 - `aeriotv-presets/app_settings.py`: the App Settings choices and their stored values. No Django.
 - `aeriotv-presets/schema.py`: record shapes, validation, and the record key rule. No Django.
 - `aeriotv-presets/copying.py`: Copy from, a record turned back into form choices. No Django.
-- `aeriotv-presets/profiles.py`: profile rows, PIN hashing, and the Child PIN rule. No Django.
+- `aeriotv-presets/profiles.py`: profile rows (no PINs). No Django.
 - `aeriotv-presets/seed.py`: settings parsing, Fill and Replace, per-user scoping, and result text. No Django.
 - `aeriotv-presets/dispatcharr_bridge.py`: the only module that imports Dispatcharr.
 - `tests/`: pytest, with fixtures copied from the schema examples.
@@ -165,6 +163,7 @@ repository's release zip with `{version}`, plus a pull request titled `[aeriotv-
 
 ## Changelog
 
+- 0.0.9: Profiles no longer take PINs (users set them on a device), the Profiles section shows one heading, and the Profiles table has room for the Role labels.
 - 0.0.8: counts read as one or several ("1 profile", "2 groups"), and notifications say group order and hidden groups.
 - 0.0.7: Copy from another user, Also apply to several users, a Current record line per section,
   a Profiles section, Clear Record, and clearer steps.

@@ -2,22 +2,18 @@
 
 Pure Python, no Django. A row is
 [userId, username, displayName, pinType, pinHash, pinSalt, role, updatedAt, avatar, order].
-PINs are 4 to 6 digits (Numbers) or 4 to 6 of U, D, L, R (Directions), stored
-only as SHA-256(salt bytes || UTF-8 PIN) with a fresh 16-byte salt, lowercase
-hex. The plain PIN never goes into the record or the log.
+The plugin never sets a PIN: a new profile is written without one and the user
+sets it on a device. A PIN a device already saved for that user stays as it is.
 """
 
 from __future__ import annotations
 
-import hashlib
-import os
 import re
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 TABLE = "profiles_rows"
 ROW_CAP = 25
 NAME_MAX_BYTES = 40
-PIN_MIN, PIN_MAX = 4, 6
 PIN_TYPES = ("none", "numbers", "directions")
 ROLES = ("admin", "user", "child")
 ICONS = ("person", "face", "child", "paw", "cat", "fish", "star", "rocket", "music", "soccer", "gamepad", "movie")
@@ -30,49 +26,30 @@ class ProfileError(ValueError):
     pass
 
 
-def normalize_pin(pin_type: str, text: Any) -> str:
-    raw = re.sub(r"[\s,]+", "", str(text or "")).upper()
-    if pin_type == "numbers":
-        ok = raw.isdigit()
-    elif pin_type == "directions":
-        ok = bool(raw) and set(raw) <= set("UDLR")
-    else:
-        raise ProfileError("PIN type must be Numbers or Directions")
-    if not ok or not PIN_MIN <= len(raw) <= PIN_MAX:
-        kind = "digits" if pin_type == "numbers" else "of U, D, L, and R"
-        raise ProfileError(f"a PIN is {PIN_MIN} to {PIN_MAX} {kind}")
-    return raw
-
-
-def hash_pin(pin: str, salt: bytes) -> str:
-    return hashlib.sha256(salt + pin.encode("utf-8")).hexdigest()
-
-
 def _clip_name(name: str) -> str:
     data = name.encode("utf-8")[:NAME_MAX_BYTES]
     return data.decode("utf-8", errors="ignore")
 
 
 def table_defaults(target: str, existing_rows: List[Any]) -> List[Dict[str, Any]]:
-    """Table rows that start from the record's profiles (never with PINs)."""
+    """Table rows that start from the record's profiles."""
     rows = []
     for r in sorted((r for r in existing_rows if isinstance(r, list) and len(r) >= 7),
                     key=lambda r: r[9] if len(r) > 9 and isinstance(r[9], int) else 0):
         avatar = r[8] if len(r) > 8 and isinstance(r[8], dict) else {}
         rows.append({"user": r[1], "name": r[2] or r[1], "role": r[6] if r[6] in ("user", "child") else "user",
                      "icon": avatar.get("icon") if avatar.get("icon") in ICONS else DEFAULT_ICON,
-                     "color": avatar.get("color") if avatar.get("color") in COLORS else DEFAULT_COLOR,
-                     "pin_type": r[3] if r[3] in PIN_TYPES else "none", "pin": ""})
+                     "color": avatar.get("color") if avatar.get("color") in COLORS else DEFAULT_COLOR})
     # With no profiles in the record the table starts empty, so an untouched
     # table writes nothing (Dispatcharr hands unsaved defaults to actions).
     return rows
 
 
 def build_rows(table: Any, *, target: str, users: Dict[str, Tuple[int, bool]], existing_rows: List[Any],
-               now: int, salt: Callable[[], bytes] = lambda: os.urandom(16)) -> List[list]:
+               now: int) -> List[list]:
     """Profile rows for the record. users maps username to (user id, is Dispatcharr admin).
 
-    A row with an empty PIN keeps the record's PIN when its PIN type is unchanged.
+    A profile keeps the PIN a device saved for it; a new profile has none.
     The target user is always present (the default profile).
     """
     if not isinstance(table, list):
@@ -104,18 +81,11 @@ def build_rows(table: Any, *, target: str, users: Dict[str, Tuple[int, bool]], e
         username = str(row["user"]).strip()
         user_id, is_admin = users[username]
         role = "admin" if is_admin else (row.get("role") if row.get("role") in ("user", "child") else "user")
-        pin_type = row.get("pin_type") if row.get("pin_type") in PIN_TYPES else "none"
-        pin_text = str(row.get("pin") or "").strip()
         old = by_user.get(username)
-        if pin_type == "none":
-            pin_hash = pin_salt = ""
-        elif pin_text:
-            s = salt()
-            pin_hash, pin_salt = hash_pin(normalize_pin(pin_type, pin_text), s), s.hex()
-        elif old is not None and old[3] == pin_type and old[4] and old[5]:
-            pin_hash, pin_salt = old[4], old[5]
+        if old is not None and old[3] in PIN_TYPES and old[3] != "none" and old[4] and old[5]:
+            pin_type, pin_hash, pin_salt = old[3], old[4], old[5]
         else:
-            raise ProfileError(f"enter a PIN for {username} or set its PIN type to None")
+            pin_type, pin_hash, pin_salt = "none", "", ""
         avatar = {}
         if row.get("icon") in ICONS:
             avatar["icon"] = row["icon"]
@@ -128,10 +98,6 @@ def build_rows(table: Any, *, target: str, users: Dict[str, Tuple[int, bool]], e
             stamp = old[7]  # unchanged row keeps its stamp, so devices see no edit
         out.append([user_id, username, display, pin_type, pin_hash, pin_salt, role, stamp, avatar, order])
 
-    if any(r[6] == "child" for r in out):
-        missing = [r[1] for r in out if r[6] != "child" and r[3] == "none"]
-        if missing:
-            raise ProfileError("while a profile is a Child, every other profile needs a PIN: " + ", ".join(missing))
     return out
 
 
@@ -164,10 +130,3 @@ def validate(data: Any) -> Dict[str, Any]:
     if len(data["rows"]) > ROW_CAP:
         raise ProfileError("too many profiles")
     return data
-
-
-def clear_pins(table: Any) -> Any:
-    """The same table with every PIN cell emptied (after a successful Apply)."""
-    if not isinstance(table, list):
-        return table
-    return [dict(r, pin="") if isinstance(r, dict) else r for r in table]
