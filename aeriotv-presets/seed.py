@@ -312,3 +312,56 @@ def toast(mode: str, result: "MergeResult", seed_cats: Dict[str, Dict[str, Any]]
     if kept:
         text += " Keeps " + ", ".join(kept) + "."
     return text
+
+
+def scope_to_target(categories: Dict[str, Dict[str, Any]], *, channel_ids, live_groups, movie_groups,
+                    series_groups) -> Tuple[Dict[str, Dict[str, Any]], int, int]:
+    """A copy of the seed for one target user: favorites, group order, default
+    group, and hidden groups keep only what that user can see. Returns the
+    scoped categories and the counts of dropped channels and groups."""
+    cats = copy.deepcopy(categories)
+    visible, live = set(channel_ids), set(live_groups)
+    dropped_channels = dropped_groups = 0
+    fav = cats.get(schema.FAVORITES)
+    if fav:
+        kept = [i for i in fav["ids"] if i in visible]
+        dropped_channels += len(fav["ids"]) - len(kept)
+        if kept:
+            fav["ids"] = kept
+        else:
+            del cats[schema.FAVORITES]
+    order = cats.get(schema.GROUP_ORDER)
+    if order and order.get("order"):
+        kept = [g for g in order["order"] if g in live]
+        dropped_groups += len(order["order"]) - len(kept)
+        order["order"] = kept
+        if order.get("mode") == "manual" and not kept:
+            del cats[schema.GROUP_ORDER]
+    hidden = cats.get(schema.HIDDEN_GROUPS)
+    if hidden:
+        for kind, offered in (("live", live), ("movies", set(movie_groups)), ("series", set(series_groups))):
+            names = hidden.get(kind) or []
+            kept = [g for g in names if g in offered]
+            dropped_groups += len(names) - len(kept)
+            hidden[kind] = kept
+        if not any(hidden.values()):
+            del cats[schema.HIDDEN_GROUPS]
+    lane = (cats.get(schema.SETTINGS) or {}).get("v")
+    if lane and "defaultGroup" in lane and lane["defaultGroup"] not in live:
+        del lane["defaultGroup"]
+        dropped_groups += 1
+        if not lane:
+            del cats[schema.SETTINGS]
+    return cats, dropped_channels, dropped_groups
+
+
+def many_toast(mode: str, *, write: bool, changed: int, unchanged: int, failed: int) -> str:
+    """One line for a run over several users."""
+    label = "Fill" if mode == MODE_FILL else "Replace"
+    total = changed + unchanged + failed
+    verb = "Applied" if write else "Preview"
+    middle = "changed" if write else "would change"
+    text = f"{verb} ({label}) for {total} users: {changed} {middle}, {unchanged} unchanged"
+    if failed:
+        text += f", {failed} failed (see the log)"
+    return text + "."

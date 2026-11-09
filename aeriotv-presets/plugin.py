@@ -161,50 +161,60 @@ class Plugin:
         request = seed.parse_settings(settings)
         if not request.categories:
             raise seed.SeedError("nothing to apply; set at least one section")
-        user = bridge.find_user(request.username)
+        primary = bridge.find_user(request.username)
+        also = settings.get(options.ALSO_USERS)
+        names = [n for n in (also if isinstance(also, list) else []) if isinstance(n, str) and n and n != primary.username]
+        targets = [primary] + [bridge.find_user(n) for n in dict.fromkeys(names)]
+        if len(targets) == 1:
+            outcome = self._apply_one(primary, request, logger, write=write)
+            return {"status": "ok", "message": outcome["toast"]}
+        changed = unchanged = failed = 0
+        for user in targets:
+            try:
+                outcome = self._apply_one(user, request, logger, write=write)
+            except (seed.SeedError, schema.SchemaError, bridge.BridgeError) as exc:
+                failed += 1
+                logger.info("[AERIOTV-PRESETS] %s for user %s failed: %s",
+                            "apply" if write else "preview", user.pk, getattr(exc, "code", None) or exc)
+                continue
+            if outcome["changed"]:
+                changed += 1
+            else:
+                unchanged += 1
+        return {"status": "ok", "message": seed.many_toast(request.mode, write=write, changed=changed,
+                                                           unchanged=unchanged, failed=failed)}
+
+    def _apply_one(self, user, request, logger, *, write):
         key = schema.user_key(user.username)
         if key is None:
             raise seed.SeedError("this user has no AerioTV record name")
+        vod = bridge.vod_group_names(user)
+        cats, dropped_channels, dropped_groups = seed.scope_to_target(
+            request.categories, channel_ids=[r["id"] for r in bridge.visible_channels(user)],
+            live_groups=bridge.visible_group_names(user), movie_groups=vod["movie"], series_groups=vod["series"])
+        if not cats:
+            raise seed.SeedError(f"nothing {user.username} can use; run Refresh Lists")
 
-        fav = request.categories.get(schema.FAVORITES)
-        if fav:
-            visible = {row["id"] for row in bridge.visible_channels(user)}
-            unknown = [i for i in fav["ids"] if i not in visible]
-            if unknown:
-                raise seed.SeedError(f"{len(unknown)} favorite(s) are not channels {user.username} can see; run Refresh Lists")
-
-        hidden = request.categories.get(schema.HIDDEN_GROUPS)
-        if hidden:
-            # Choices saved for a previously chosen user can name groups this user never sees.
-            if hidden.get("live"):
-                visible_groups = set(bridge.visible_group_names(user))
-                hidden["live"] = [g for g in hidden["live"] if g in visible_groups]
-            if hidden.get("movies") or hidden.get("series"):
-                vod = bridge.vod_group_names(user)
-                hidden["movies"] = [g for g in hidden.get("movies", []) if g in set(vod["movie"])]
-                hidden["series"] = [g for g in hidden.get("series", []) if g in set(vod["series"])]
-            if not any(hidden.values()):
-                del request.categories[schema.HIDDEN_GROUPS]
-        if not request.categories:
-            raise seed.SeedError("nothing to apply; set at least one section")
-
-        keys = bridge.list_keys(user)
-        blocked, _legacy = seed.legacy_conflict(keys, key)
+        blocked, _legacy = seed.legacy_conflict(bridge.list_keys(user), key)
         if blocked:
             raise seed.SeedError("an older AerioTV record must move first; open AerioTV as this user with Dispatcharr Sync on")
 
         existing = bridge.read_record(user, key)
-        result = seed.merge(existing, request.categories, mode=request.mode, app_version=self.version)
+        result = seed.merge(existing, cats, mode=request.mode, app_version=self.version)
         logger.info(
-            "[AERIOTV-PRESETS] %s for user %s: mode=%s record=%s add=%s replace=%s keep=%s",
+            "[AERIOTV-PRESETS] %s for user %s: mode=%s record=%s add=%s replace=%s keep=%s dropped_channels=%d dropped_groups=%d",
             "apply" if write else "preview", user.pk, request.mode, seed.describe(seed.summarize(existing)),
             ",".join(result.added) or "-", ",".join(result.replaced) or "-", ",".join(result.kept) or "-",
+            dropped_channels, dropped_groups,
         )
-        if not write or not result.changed:
-            return {"status": "ok", "message": seed.toast(request.mode, result, request.categories, write=write)}
-        size = bridge.write_record(user, key, result.record)
-        logger.info("[AERIOTV-PRESETS] wrote record for user %s: bytes=%d", user.pk, size)
-        return {"status": "ok", "message": seed.toast(request.mode, result, request.categories, write=True, size=size)}
+        size = None
+        if write and result.changed:
+            size = bridge.write_record(user, key, result.record)
+            logger.info("[AERIOTV-PRESETS] wrote record for user %s: bytes=%d", user.pk, size)
+        toast = seed.toast(request.mode, result, cats, write=write, size=size)
+        if dropped_channels or dropped_groups:
+            toast += f" Skipped {dropped_channels} channels and {dropped_groups} groups {user.username} cannot see."
+        return {"changed": result.changed, "toast": toast}
 
 
 class ActionError(Exception):

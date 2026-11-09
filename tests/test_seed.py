@@ -156,3 +156,30 @@ def test_tables_take_precedence_over_slots():
 def test_empty_table_writes_nothing():
     req = seed.parse_settings({"target_username": "v", "favorites_rows": [], "favorite_1": "5"})
     assert "favorites" not in req.categories
+
+
+def test_scope_to_target_drops_what_the_user_cannot_see():
+    cats = {"favorites": {"ids": [1, 2, 3]}, "groupOrder": {"mode": "manual", "order": ["A", "B"]},
+            "hiddenGroups": {"live": ["A", "Z"], "movies": ["M"], "series": ["S"]},
+            "settings": {"v": {"defaultGroup": "Z", "selectedTheme": "Forest"}}}
+    scoped, ch, gr = seed.scope_to_target(cats, channel_ids=[2, 3], live_groups=["A"], movie_groups=["M"],
+                                          series_groups=[])
+    assert scoped["favorites"] == {"ids": [2, 3]}
+    assert scoped["groupOrder"] == {"mode": "manual", "order": ["A"]}
+    assert scoped["hiddenGroups"] == {"live": ["A"], "movies": ["M"], "series": []}
+    assert scoped["settings"] == {"v": {"selectedTheme": "Forest"}}
+    assert (ch, gr) == (1, 4)
+    assert cats["favorites"]["ids"] == [1, 2, 3]  # input untouched
+
+
+def test_scope_removes_empty_categories():
+    scoped, ch, gr = seed.scope_to_target({"favorites": {"ids": [9]}, "groupOrder": {"mode": "manual", "order": ["Q"]}},
+                                          channel_ids=[], live_groups=[], movie_groups=[], series_groups=[])
+    assert scoped == {} and (ch, gr) == (1, 1)
+
+
+def test_many_toast():
+    assert seed.many_toast("fill", write=True, changed=2, unchanged=1, failed=0) == \
+        "Applied (Fill) for 3 users: 2 changed, 1 unchanged."
+    assert seed.many_toast("replace", write=False, changed=1, unchanged=0, failed=1) == \
+        "Preview (Replace) for 2 users: 1 would change, 0 unchanged, 1 failed (see the log)."
