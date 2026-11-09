@@ -92,7 +92,7 @@ def parse_settings(settings: Dict[str, Any]) -> SeedRequest:
 
     Reads the select slots (favorite_N, group_N), the Show switches
     (show_live:, show_movies:, show_series:), and the App Settings selects
-    (set:<name>). The 0.1.0 text fields (favorites, group_order,
+    (set:<name>). Text fields from earlier internal builds (favorites, group_order,
     hidden_groups_*) are ignored on purpose: Dispatcharr keeps old keys in the
     saved settings after the fields are gone, and the admin can no longer see them.
     """

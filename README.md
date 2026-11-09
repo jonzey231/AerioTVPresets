@@ -1,187 +1,141 @@
 # AerioTV Setup for Dispatcharr
 
-A Dispatcharr plugin that lets a Dispatcharr admin preconfigure a user's AerioTV setup on the
-server: favorite channels, Live TV group order, hidden groups, and a few settings (theme, mode, and
-default group). The plugin writes that user's AerioTV Dispatcharr Sync record, the App Data key
-`<username>.aeriotv`. When that user signs in to AerioTV with Dispatcharr Sync on, their devices find
-the record and start from it, so nobody has to set up each phone, tablet, or TV by hand.
-
-The record shape is the AerioTV Dispatcharr Sync schema (v3). See [docs/SCHEMA.md](docs/SCHEMA.md)
-for the vendored excerpt and [CONTRIBUTING.md](CONTRIBUTING.md) for where the contract lives.
+A Dispatcharr plugin that lets a Dispatcharr admin set up a user's AerioTV app before the user signs
+in: favorite channels, Live TV group order, hidden groups and categories, and app settings such as
+theme and mode. The plugin writes that user's AerioTV Dispatcharr Sync record on the server. When
+the user signs in to AerioTV, their devices offer Dispatcharr Sync and start from that setup.
 
 ## What it does
 
-1. You pick a Dispatcharr user from the User list, save, run **Load**, and reload the page. The
-   settings then show four collapsible sections: Live TV (open), Movies, TV Shows, and App Settings
-   (closed). On a Dispatcharr build without collapsible plugin sections (see Status), the page shows
-   Expand Live TV, Expand Movies, Expand TV Shows, and Expand App Settings switches instead: turn on
-   the ones you want, save, run Load, and reload. Saved choices in a closed section still apply.
-   - **Live TV**: Favorite 1 to 10 (that user's channels, shown as `number name [group]`), Group
-     order, Group position 1 to 8, Default group, and a Show switch for every Live TV group the user
-     can see (a single Hidden Live TV groups list when the user has more than 25 groups).
-   - **Movies** and **TV Shows**: a Hidden movie categories or Hidden series categories list; pick
-     the categories to hide. Builds without collapsible sections show a Show switch per category.
-   - **App Settings**: settings from the AerioTV settings allowlist that have a fixed set of values
-     (appearance, startup, Live TV and guide, player, Multiview, Movies, TV Shows, and DVR, and TV
-     remote), each with Leave as is.
-   - **Apply**: Apply mode, Fill or Replace, always last.
-   Anything left on Leave empty or Leave as is is not written. Groups turned off are written as
-   hidden groups (`hiddenGroups`); the user can show them again in AerioTV's group manager.
-2. Results show as a short Dispatcharr notification; the detail (counts only) goes to the Dispatcharr log.
-3. **Preview** reports what Apply would add, replace, or keep. It writes nothing.
-4. **Apply** writes the record, after a confirmation.
-   - **Fill** (default) only adds sections the record does not have yet. Anything a device already
-     saved is left alone.
-   - **Replace** overwrites the sections you filled in. For settings, only the settings you set are
-     overwritten; every other saved setting stays. Sections you left blank, and everything else
-     in the record (recents, progress, reminders, and the rest), are kept as they are.
+1. Shows the chosen user's channels and groups as lists to pick from.
+2. Writes the picks to the user's AerioTV record, the App Data key `<username>.aeriotv`.
+3. Fill mode only adds what the record does not have yet; Replace mode overwrites what you set.
+4. Never touches anything else in the record (recents, progress, reminders, and the rest).
 
-Blank sections are never written. The plugin never writes a `schemaVersion` higher than 3, and it
-refuses to touch a record with a newer `schemaVersion` or a malformed one. Logs carry user ids,
-counts, and byte sizes, never values or record keys.
+The record shape is the AerioTV Dispatcharr Sync schema, version 3. See [docs/SCHEMA.md](docs/SCHEMA.md)
+and [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Favorites are checked against the channels the chosen user can see (the same visibility rule
-Dispatcharr applies everywhere: user level, adult content preference, and assigned channel
-profiles). Group names are written exactly as the server names them.
+## Requirements
+
+1. Dispatcharr 0.33.0 or newer, with the App Data API.
+2. For collapsible sections (Live TV, Movies, TV Shows, App Settings, Apply), a Dispatcharr build
+   whose plugin settings support `section` fields: the Dispatcharr `dev` branch from November 2026
+   (it still reports version 0.33.0). On a build without them, the plugin falls back to Expand
+   switches for each section and a flat list.
+3. AerioTV with Dispatcharr Sync on the user's devices.
 
 ## Install
 
-1. Build the zip from a checkout: `scripts/build_zip.sh` writes
-   `dist/aeriotv-setup-plugin-<version>.zip` (one top-level `aeriotv-setup/` folder; the build is
-   byte-for-byte reproducible). Dispatcharr installs it under the plugin key `aeriotv_setup`.
-2. In Dispatcharr, open **Plugins**, choose **Import**, and upload the zip.
-3. Enable the plugin and accept the trust prompt. Plugins run as server code with full database
-   access; this one reads users, channels, and groups, and writes App Data for the user you pick.
-4. The lists are read when Dispatcharr loads the plugin. Load User Lists asks Dispatcharr to reload
-   it, so after adding a Dispatcharr user or channels, run Load User Lists and reload the page.
+1. Download `aeriotv-setup-plugin-<version>.zip` from the
+   [Releases](https://github.com/jonzey231/AerioTVDispatcharrPlugin/releases) page, or build it
+   from a checkout with `scripts/build_zip.sh` (writes `dist/`).
+2. In Dispatcharr, open Plugins, choose Install Plugin (or Import), and upload the zip.
+3. Turn the plugin on and accept the trust prompt. Plugins run as server code; this one reads
+   users, channels, groups, and VOD categories, and writes App Data for the user you pick.
 
-The plugin is not in the Dispatcharr plugin catalog yet.
+## Using it
 
-## Testing
+1. Open the plugin's settings and choose the user in the User list.
+2. Save.
+3. Run Load. Dispatcharr only reads a plugin's lists when it loads the plugin, so Load asks it to
+   rebuild them for that user.
+4. Reload the page. The sections now hold that user's channels and groups.
+5. Make your choices in Live TV, Movies, TV Shows, and App Settings. Anything left on Leave empty
+   or Leave as is is not written.
+6. In Apply, pick Fill or Replace, then Save.
+7. Run Preview. It reports what Apply would write, in one line.
+8. Run Apply and confirm.
 
-You need a Dispatcharr server, a Standard test user on it (for example one named `plugin`), and an
-AerioTV device that has never signed in as that user.
+Run Load again (and reload) after choosing a different user, or after channels or groups change.
 
-1. On a computer, run `scripts/build_zip.sh` in this repository to build the zip.
-2. In the Dispatcharr web UI, open Plugins, choose Import, and upload the zip.
-3. Turn the AerioTV Setup plugin on and accept the trust prompt.
-4. Open the plugin settings, choose the test user in the User list, and save.
-5. Run Load, then reload the page. Expected: the open Live TV section shows Favorite 1 to 10, Group
-   order, Group position 1 to 8, Default group, and a Show switch for each group.
-6. Set Favorite 1 and Favorite 2 to two channels from the lists.
-7. Set Group order to Manual and Group position 1 to 3 to three groups, in the order you want.
-   Leave Apply mode on Fill. Save.
-8. Run Preview. Expected: "Preview (fill): adds favorites, groupOrder" and "no AerioTV record yet".
-9. Run Apply and confirm. Expected: "Applied (fill): adds favorites, groupOrder".
-10. Run Preview again. Expected: it now says it keeps the device copy of favorites and groupOrder.
-11. On the AerioTV device, add the Dispatcharr server and sign in as the test user.
-12. Expected: AerioTV offers Dispatcharr Sync during first launch. Choose Turn On.
-13. Expected: Live TV shows the two favorites in the order you entered, and the groups you listed
-    lead the group list in that order.
+## What each section writes
 
-## Phase plan
+| Section | Choices | Written to |
+|---|---|---|
+| Live TV | Favorite 1 to 10 (shown as `number name [group]`) | `favorites`, in slot order |
+| Live TV | Group order (Server order, Alphabetical, or Manual) and Group position 1 to 8 | `groupOrder` |
+| Live TV | Default group | `settings` (`defaultGroup`) |
+| Live TV | A Show switch per group, or one Hidden Live TV groups list past 25 groups | `hiddenGroups.live` |
+| Movies | Hidden movie categories list | `hiddenGroups.movies` |
+| TV Shows | Hidden series categories list | `hiddenGroups.series` |
+| App Settings | Appearance, startup, Live TV and guide, player, Multiview, Movies, TV Shows, and DVR, and TV remote settings | `settings` (all devices) |
+| Apply | Fill or Replace | how the record is merged |
 
-1. Phase 1 (this release): favorites, group order, hidden groups, and selected settings.
-2. Phase 2: more of the settings allowlist (appearance, guide, and player options).
-3. Phase 3: AerioTV profiles.
+Hidden groups and categories are hidden in AerioTV; the user can show them again in AerioTV's group
+manager.
 
-## Status
+Fill and Replace:
 
-Version 0.1.6. Unit tests pass (`pytest`); it has not yet run inside a Dispatcharr
-server.
+1. Fill (default) adds a section only when the record does not hold it yet. Anything a device
+   already saved stays.
+2. Replace overwrites the sections you set here. For settings, only the settings you set are
+   overwritten; the user's other settings stay.
+3. Sections you left empty, and every other part of the record, are kept as they are.
+4. The plugin never writes a newer schema version than AerioTV knows, and it refuses a record it
+   cannot read.
 
-Requirements: Dispatcharr v0.33.0 or newer. Collapsible sections need a build whose plugin field
-serializer accepts the `section` type: the Dispatcharr `dev` branch (read at commit `174a26e`,
-2026-11-08; it still reports version 0.33.0, and no tagged release has it yet). The v0.33.0 tag
-and `main` (commit `1241b3f`) do not. The plugin checks this at load time and falls back to Expand
-switches.
+## How AerioTV picks it up
 
-Built against Dispatcharr v0.33.0 (commit `1241b3f`, 2026-10-30) and `dev` (commit `174a26e`) and the Dispatcharr plugin
-catalog at commit `ae0d954` (2026-11-09). Every Dispatcharr call is in
-`aeriotv-setup/dispatcharr_bridge.py`, so changes in Dispatcharr's internals are fixed in one file.
+1. The user signs in to AerioTV with the Dispatcharr server.
+2. AerioTV finds the record and offers Dispatcharr Sync.
+3. After Turn On, the device applies the favorites, group order, hidden groups and categories, and
+   settings. Every device that signs in as that user gets the same setup.
 
-Open questions:
+## Limits
 
-1. **Manifest version.** `plugin.json` declares `manifest_version` 1 with an empty `capabilities`
-   list: the dev branch parses capabilities at version 1 without enforcing them, and this plugin
-   needs none (it only uses the database). v0.33.0 ignores both keys. Version 2 (enforced guards)
-   is not needed.
-2. **Lists refresh on reload only.** Dispatcharr reads `Plugin.fields` only when it loads a plugin
-   (`apps/plugins/loader.py` `_load_plugin`), and its settings form cannot react to a changed field.
-   Load User Lists touches Dispatcharr's shared plugin reload token so every worker rebuilds the
-   fields on the next page load; that token helper is private (`_touch_reload_token`). With no
-   database at load, the User field falls back to a text box.
-3. **Writer identity.** The record envelope's `platform` is `dispatcharr-plugin` and `deviceId` is a
-   fixed id. Both apps accept any string there today, but the schema lists only `ios`, `tvos`, and
-   `android`; the schema should name the plugin's values.
-4. **Guide days.** Requested as a seeded setting, but it is not in the schema's settings allowlist
-   (section 4.9), so it is not offered. Mode (`appearanceMode`) is offered beside the theme.
-5. **Legacy records.** If the user still has the pre 2026-11-05 key (`app.molinete.aerio`), devices
-   only move it while `<username>.aeriotv` is absent, so the plugin refuses to write until a device
-   has moved it.
-6. **Fill and empty sections.** Fill counts a section as present even when a device saved it empty.
-   Devices treat an empty server copy as nothing to apply on their first read (schema 10a rule 2).
-7. **App wording.** The apps still describe an existing record as another device's setup; seeded
-   record wording is an app-side follow-up on both platforms.
-8. **Minimum version.** `min_dispatcharr_version` is 0.33.0, the version read. The first release
-   with the App Data API and `channels_queryset_for_user` was not confirmed.
-9. **Movie and series categories.** The lists hold categories linked to an active M3U account with
-   the category enabled, and only the types the user may watch (movies or series, dev branch
-   `apps/vod/utils.py`). Dispatcharr has no per-user category rule beyond that, so a user can be
-   offered categories from an account they do not use, and adult categories are not filtered
-   (categories carry no adult flag).
-10. **No multi-select and no field groups.** Dispatcharr 0.33.0 renders info, boolean, number,
-   select, text, and string fields only (`frontend/src/components/Field.jsx:16-82`), as one flat list
-   (`frontend/src/components/cards/PluginCard.jsx:44-53`); the field serializer has no group or
-   section attribute (`apps/plugins/serializers.py:23-35`). The dev branch adds `section` markers
-   (`{"type": "section", "collapsed": true}`) that member fields join with `"section": "<id>"`
-   (`apps/plugins/serializers.py:40-52`, `frontend/src/components/PluginFieldList.jsx`, Plugins.md
-   "Sections"), plus `multiselect`. This plugin uses sections when available and numbered selects
-   for favorites and group order on both, since slot order is the display order.
-13. **App Settings choices.** Number settings offer common values inside the schema's ranges, not
-   every allowed value. Free text, colors, sort orders, and other values the schema does not list
-   are not offered.
-11. **Select option values must be non-empty.** `apps/plugins/serializers.py` drops a whole field
-   when any option value is blank, which is why 0.1.0 showed no User, Group order, Theme, or Mode
-   control. Leave empty now uses the value `__none__`.
-12. **Settings saved by 0.1.0** (the old text boxes) stay in Dispatcharr's saved settings but are
-   ignored.
+1. Movie and series category lists are server-wide: every category enabled on an active M3U
+   account, limited to the types the user may watch. Dispatcharr has no per-user category rule
+   beyond that, and categories carry no adult flag.
+2. Lists refresh only through Load and a page reload.
+3. 10 favorite slots and 8 group positions.
+4. Guide days is not part of the AerioTV settings that sync, so it is not offered.
+5. App Settings offers settings with a fixed set of values. Number settings offer common values
+   within the allowed ranges. Free text, colors, and sort orders are not offered.
+6. If a user still has the AerioTV record key used before November 2026, the plugin waits until
+   one of the user's devices has moved it.
 
-### Catalog submission requirements (not submitting yet)
+## Privacy
 
-From the catalog's README, CONTRIBUTING.md, and CODE_OF_CONDUCT.md:
+The plugin logs user ids, counts, modes, and record sizes. It never logs channel names, group
+names, setting values, or record keys. It makes no network calls.
 
-1. Plugin folder `plugins/<slug>/` with a lowercase, hyphenated slug (`aeriotv-setup`).
-2. `plugin.json` with `name`, `version` (MAJOR.MINOR.PATCH), `description`, `author` (the GitHub
-   account opening the pull request) or `maintainers`, and `license` (an OSI approved SPDX id;
-   `AGPL-3.0-or-later` qualifies). Optional: `min_dispatcharr_version`, `repo_url`,
-   `discord_thread`.
-3. External plugin (recommended): only `plugin.json` (plus optional README and logo) goes in the
-   catalog, with `source_type: "external"`, `source_url` an HTTPS release zip URL containing
-   `{version}`, and `repo_url`. That needs a GitHub release zip in this repository.
-4. Pull request title `[aeriotv-setup] description` with a meaningful description. New plugins
-   always get maintainer review; CodeQL and ClamAV scans run on the source.
-5. Code of Conduct: no paid features, no undisclosed phone home (this plugin makes no network
-   calls), a committed maintainer, and nothing that helps access content without authorization.
-6. Any change to name, author, license, or source needs a version bump.
+## Open items
 
-## Development
+1. The AerioTV schema lists the writer platforms `ios`, `tvos`, and `android`; records from the
+   plugin say `dispatcharr-plugin`. Both apps accept it; the schema should name it.
+2. When an action fails, Dispatcharr writes a stack trace to its log beside the red notification.
+3. Not yet submitted to the Dispatcharr plugin catalog.
+
+## Development and tests
 
 ```
 python3 -m venv .venv
 .venv/bin/pip install pytest
 .venv/bin/pytest
+scripts/build_zip.sh
 ```
 
 Layout:
 
-- `aeriotv-setup/plugin.json`: manifest, settings fields, and actions (catalog format).
-- `aeriotv-setup/plugin.py`: the `Plugin` class Dispatcharr loads.
+- `aeriotv-setup/plugin.json`: manifest (catalog format, `manifest_version` 1, no capabilities).
+- `aeriotv-setup/plugin.py`: the `Plugin` class and the Load, Preview, and Apply actions.
+- `aeriotv-setup/options.py`: builds the settings fields and sections. No Django.
+- `aeriotv-setup/app_settings.py`: the App Settings choices and their stored values. No Django.
 - `aeriotv-setup/schema.py`: record shapes, validation, and the record key rule. No Django.
-- `aeriotv-setup/options.py`: builds the select lists from users, channels, and groups. No Django.
-- `aeriotv-setup/seed.py`: settings parsing and the Fill and Replace merge. No Django.
+- `aeriotv-setup/seed.py`: settings parsing, Fill and Replace, and result text. No Django.
 - `aeriotv-setup/dispatcharr_bridge.py`: the only module that imports Dispatcharr.
 - `tests/`: pytest, with fixtures copied from the schema examples.
+
+## Catalog status
+
+Not submitted. A submission to [Dispatcharr/Plugins](https://github.com/Dispatcharr/Plugins) as an
+external plugin needs a `plugins/aeriotv-setup/plugin.json` there with `name`, `version`, `description`,
+`author`, `license`, `repo_url`, `source_type: "external"`, and `source_url` pointing at this
+repository's release zip with `{version}`, plus a pull request titled `[aeriotv-setup] ...`.
+
+## Changelog
+
+- 0.0.1: first public release. Earlier internal builds were numbered 0.1.x.
 
 ## License
 

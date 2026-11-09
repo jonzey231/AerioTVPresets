@@ -51,7 +51,7 @@ def test_parse_rejects(over):
 
 def test_new_record_round_trip():
     req = seed.parse_settings(full_settings())
-    result = seed.merge(None, req.categories, mode="fill", app_version="0.1.0", now=NOW)
+    result = seed.merge(None, req.categories, mode="fill", app_version="0.0.1", now=NOW)
     assert sorted(result.added) == sorted(schema.PHASE1_CATEGORIES)
     record = json.loads(json.dumps(result.record, separators=(",", ":")))
     assert schema.validate_envelope(record) == result.record
@@ -64,7 +64,7 @@ def test_fill_never_touches_device_categories(fixture):
     existing = fixture("record.json")
     before = copy.deepcopy(existing)
     req = seed.parse_settings(full_settings())
-    result = seed.merge(existing, req.categories, mode="fill", app_version="0.1.0", now=NOW)
+    result = seed.merge(existing, req.categories, mode="fill", app_version="0.0.1", now=NOW)
     cats = result.record["categories"]
     assert cats["favorites"] == before["categories"]["favorites"]
     assert cats["settings"] == before["categories"]["settings"]
@@ -76,7 +76,7 @@ def test_fill_never_touches_device_categories(fixture):
 
 def test_fill_with_nothing_new_writes_nothing(fixture):
     existing = fixture("record.json")
-    result = seed.merge(existing, {"favorites": {"ids": [1]}}, mode="fill", app_version="0.1.0", now=NOW)
+    result = seed.merge(existing, {"favorites": {"ids": [1]}}, mode="fill", app_version="0.0.1", now=NOW)
     assert not result.changed
     assert result.record["updatedAt"] == existing["updatedAt"]
 
@@ -84,7 +84,7 @@ def test_fill_with_nothing_new_writes_nothing(fixture):
 def test_replace_overwrites_chosen_and_keeps_the_rest(fixture):
     existing = fixture("record.json")
     seed_cats = {"favorites": {"ids": [5, 6]}, "settings": {"v": {"selectedTheme": "Forest", "defaultGroup": "News"}}}
-    result = seed.merge(existing, seed_cats, mode="replace", app_version="0.1.0", now=NOW)
+    result = seed.merge(existing, seed_cats, mode="replace", app_version="0.0.1", now=NOW)
     cats = result.record["categories"]
     assert cats["favorites"]["data"] == {"ids": [5, 6]}
     assert cats["settings"]["data"] == {
@@ -98,7 +98,7 @@ def test_refuses_newer_schema(fixture):
     existing = fixture("record.json")
     existing["schemaVersion"] = 9
     with pytest.raises(schema.SchemaError):
-        seed.merge(existing, {"favorites": {"ids": [1]}}, mode="replace", app_version="0.1.0", now=NOW)
+        seed.merge(existing, {"favorites": {"ids": [1]}}, mode="replace", app_version="0.0.1", now=NOW)
 
 
 def test_legacy_key_blocks_until_moved():
@@ -138,8 +138,8 @@ def test_app_setting_outside_schema_is_refused():
 
 def test_toasts_are_short():
     cats = {"favorites": {"ids": [1, 2]}, "groupOrder": {"mode": "manual", "order": ["A", "B", "C"]}}
-    new = seed.merge(None, cats, mode="fill", app_version="0.1.5", now=NOW)
+    new = seed.merge(None, cats, mode="fill", app_version="0.0.1", now=NOW)
     assert seed.toast("fill", new, cats, write=False) == "Preview (Fill): would add favorites (2), groupOrder (3 groups)."
     assert seed.toast("fill", new, cats, write=True, size=1946) == "Applied (Fill): favorites (2), groupOrder (3 groups). Record 1.9 KB."
-    again = seed.merge(new.record, cats, mode="fill", app_version="0.1.5", now=NOW)
+    again = seed.merge(new.record, cats, mode="fill", app_version="0.0.1", now=NOW)
     assert seed.toast("fill", again, cats, write=False) == "Preview (Fill): no change; the record already has favorites, groupOrder."
