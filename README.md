@@ -24,7 +24,8 @@ and [CONTRIBUTING.md](CONTRIBUTING.md).
    whose plugin settings support `section` fields: the Dispatcharr `dev` branch from November 2026
    (it still reports version 0.33.0). On a build without them, the plugin falls back to Expand
    switches for each section and a flat list.
-3. AerioTV with Dispatcharr Sync on the user's devices.
+3. AerioTV 1.8.45 or newer on iPhone, iPad, and Apple TV, or AerioTV for Android 0.5.14 or newer on
+   phones, tablets, and Android TV, with Dispatcharr Sync on.
 
 ## Install
 
@@ -137,6 +138,7 @@ repository's release zip with `{version}`, plus a pull request titled `[aeriotv-
 
 ## Changelog
 
+- 0.0.3: the description names the minimum AerioTV versions.
 - 0.0.2: the catalog manifest also declares the Load, Preview, and Apply actions for `manifest_version` 1; the plugin itself is unchanged.
 - 0.0.1: first public release. Earlier internal builds were numbered 0.1.x and named AerioTV Setup; their saved settings carry over.
 
