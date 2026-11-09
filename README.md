@@ -87,7 +87,7 @@ AerioTV device that has never signed in as that user.
 
 ## Status
 
-Version 0.1.5. Unit tests pass (`pytest`); it has not yet run inside a Dispatcharr
+Version 0.1.6. Unit tests pass (`pytest`); it has not yet run inside a Dispatcharr
 server.
 
 Requirements: Dispatcharr v0.33.0 or newer. Collapsible sections need a build whose plugin field

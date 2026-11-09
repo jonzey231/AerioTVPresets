@@ -1,7 +1,7 @@
 #!/bin/sh
 # Builds the zip the Dispatcharr Plugins page imports: one top-level folder,
 # aeriotv-setup/, holding plugin.json and plugin.py. Dispatcharr installs it
-# under the key aeriotv_setup (apps/plugins/api_views.py, _sanitize_plugin_key).
+# under the key aeriotv-setup (older builds: aeriotv_setup, apps/plugins/api_views.py, _sanitize_plugin_key).
 # Reproducible: sorted entries, fixed timestamps and permissions.
 # Usage: scripts/build_zip.sh [output.zip]
 set -eu

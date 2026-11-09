@@ -22,10 +22,23 @@ with open(os.path.join(_HERE, "plugin.json"), "r", encoding="utf-8") as _fh:
 _log = logging.getLogger("plugins.aeriotv_setup")
 
 
-def _plugin_key() -> str:
-    """The key Dispatcharr installs this folder under (apps/plugins/api_views.py _sanitize_plugin_key)."""
-    base = os.path.basename(_HERE).replace(" ", "_").replace("-", "_").lower()
-    return re.sub(r"[^a-z0-9_]", "_", base).strip("._ ") or "plugin"
+def _plugin_keys() -> list:
+    """Keys this folder may be installed under. Newer Dispatcharr builds keep the
+    folder name as the key ("aeriotv-setup", as /api/plugins/plugins/ reports it);
+    older ones sanitize it to "aeriotv_setup" (apps/plugins/api_views.py
+    _sanitize_plugin_key). Try the folder name first."""
+    folder = os.path.basename(_HERE)
+    base = folder.replace(" ", "_").replace("-", "_").lower()
+    sanitized = re.sub(r"[^a-z0-9_]", "_", base).strip("._ ") or "plugin"
+    return [k for k in dict.fromkeys([folder, folder.lower(), sanitized]) if k]
+
+
+def _saved_settings() -> dict:
+    for key in _plugin_keys():
+        saved = bridge.saved_settings(key)
+        if saved:
+            return saved
+    return {}
 
 
 def _live_fields():
@@ -48,7 +61,7 @@ def _live_fields():
     channels = live = None
     vod = {"movie": [], "series": []}
     try:
-        saved = bridge.saved_settings(_plugin_key())
+        saved = _saved_settings()
         selected = str(saved.get("target_username") or "").strip()
         if selected and selected != seed.NONE:
             user = bridge.find_user(selected)
