@@ -147,3 +147,15 @@ def request_field_refresh() -> None:
     with open(path, "a", encoding="utf-8"):
         pass
     os.utime(path, None)
+
+
+def supports_sections() -> bool:
+    """True when this Dispatcharr accepts `section` fields (newer than v0.33.0).
+
+    v0.33.0 field types: apps/plugins/serializers.py:26. The dev branch at
+    174a26e adds section, multiselect, table, and file (serializers.py:40) and
+    renders sections as an accordion (frontend/src/components/PluginFieldList.jsx).
+    """
+    from apps.plugins.serializers import PluginFieldSerializer
+
+    return "section" in PluginFieldSerializer().fields["type"].choices

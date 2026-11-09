@@ -106,3 +106,39 @@ def test_switches_map_to_hidden_groups():
 def test_channel_cap():
     rows = [{"id": i, "channel_number": i, "name": f"c{i}", "group_name": "g"} for i in range(5000)]
     assert len(options.channel_options(rows)) == options.MAX_CHANNEL_OPTIONS + 1
+
+
+def native(saved):
+    return options.build_fields(MANIFEST["fields"], usernames=["plugin"], saved=saved, channels=CHANNELS,
+                                live_groups=["News", "Sports"], movie_groups=["Drama"], series_groups=["Kids"],
+                                native_sections=True)
+
+
+def test_native_sections():
+    fields = native({"target_username": "plugin", "expand_live": False})
+    ids = [f["id"] for f in fields]
+    assert not any(i.startswith("expand_") or i.startswith("hdr:") for i in ids)
+    markers = [f for f in fields if f["type"] == "section"]
+    assert [(m["id"], m["label"], m["collapsed"]) for m in markers] == [
+        ("sec_live", "Live TV", False), ("sec_movies", "Movies", True),
+        ("sec_series", "TV Shows", True), ("sec_app", "App Settings", True)]
+    by_id = {f["id"]: f for f in fields}
+    assert by_id["favorite_1"]["section"] == "sec_live"
+    assert by_id["show_live:News"]["section"] == "sec_live"
+    assert by_id["show_movies:Drama"]["section"] == "sec_movies"
+    assert by_id["show_series:Kids"]["section"] == "sec_series"
+    assert by_id["set:selectedTheme"]["section"] == "sec_app"
+    assert by_id["app_hdr:Appearance"]["section"] == "sec_app"
+    for top in ("intro", "target_username", "apply_mode"):
+        assert "section" not in by_id[top]
+    assert ids[0:2] == ["intro", "target_username"] and ids[-1] == "apply_mode"
+    for f in fields:
+        if f["type"] != "section":
+            assert f.get("section") in (None, "sec_live", "sec_movies", "sec_series", "sec_app")
+
+
+def test_native_sections_before_a_user():
+    fields = options.build_fields(MANIFEST["fields"], usernames=["plugin"], native_sections=True)
+    by_id = {f["id"]: f for f in fields}
+    assert by_id["live_note"]["section"] == "sec_live"
+    assert by_id["group_order_mode"]["section"] == "sec_live"

@@ -41,6 +41,11 @@ def _live_fields():
     except Exception:
         return options.build_fields(manifest_fields, usernames=None)
     saved = {}
+    native = False
+    try:
+        native = bridge.supports_sections()
+    except Exception:
+        native = False
     channels = live = None
     vod = {"movie": [], "series": []}
     try:
@@ -58,6 +63,7 @@ def _live_fields():
         manifest_fields, usernames=names, saved=saved,
         channels=channels, live_groups=live,
         movie_groups=vod.get("movie"), series_groups=vod.get("series"),
+        native_sections=native,
     )
 
 

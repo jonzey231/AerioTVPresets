@@ -11,10 +11,11 @@ for the vendored excerpt and [CONTRIBUTING.md](CONTRIBUTING.md) for where the co
 
 ## What it does
 
-1. You pick a Dispatcharr user from the User list, turn on the sections you want to edit (Expand
-   Live TV, Expand Movies, Expand TV Shows, and Expand App Settings), save, run **Load**, and reload
-   the page. Each expanded section shows its choices under its header; several can be open at once.
-   A collapsed section shows only its header, and its saved choices still apply.
+1. You pick a Dispatcharr user from the User list, save, run **Load**, and reload the page. The
+   settings then show four collapsible sections: Live TV (open), Movies, TV Shows, and App Settings
+   (closed). On a Dispatcharr build without collapsible plugin sections (see Status), the page shows
+   Expand Live TV, Expand Movies, Expand TV Shows, and Expand App Settings switches instead: turn on
+   the ones you want, save, run Load, and reload. Saved choices in a closed section still apply.
    - **Live TV**: Favorite 1 to 10 (that user's channels, shown as `number name [group]`), Group
      order, Group position 1 to 8, Default group, and a Show switch for every Live TV group the user
      can see.
@@ -62,9 +63,8 @@ AerioTV device that has never signed in as that user.
 1. On a computer, run `scripts/build_zip.sh` in this repository to build the zip.
 2. In the Dispatcharr web UI, open Plugins, choose Import, and upload the zip.
 3. Turn the AerioTV Setup plugin on and accept the trust prompt.
-4. Open the plugin settings, choose the test user in the User list, leave Expand Live TV on, and
-   save.
-5. Run Load, then reload the page. Expected: the Live TV section shows Favorite 1 to 10, Group
+4. Open the plugin settings, choose the test user in the User list, and save.
+5. Run Load, then reload the page. Expected: the open Live TV section shows Favorite 1 to 10, Group
    order, Group position 1 to 8, Default group, and a Show switch for each group.
 6. Set Favorite 1 and Favorite 2 to two channels from the lists.
 7. Set Group order to Manual and Group position 1 to 3 to three groups, in the order you want.
@@ -85,19 +85,25 @@ AerioTV device that has never signed in as that user.
 
 ## Status
 
-Version 0.1.2. Unit tests pass (`pytest`); it has not yet run inside a Dispatcharr
+Version 0.1.3. Unit tests pass (`pytest`); it has not yet run inside a Dispatcharr
 server.
 
-Built against Dispatcharr v0.33.0 (commit `1241b3f`, 2026-10-30) and the Dispatcharr plugin
+Requirements: Dispatcharr v0.33.0 or newer. Collapsible sections need a build whose plugin field
+serializer accepts the `section` type: the Dispatcharr `dev` branch (read at commit `174a26e`,
+2026-11-08; it still reports version 0.33.0, and no tagged release has it yet). The v0.33.0 tag
+and `main` (commit `1241b3f`) do not. The plugin checks this at load time and falls back to Expand
+switches.
+
+Built against Dispatcharr v0.33.0 (commit `1241b3f`, 2026-10-30) and `dev` (commit `174a26e`) and the Dispatcharr plugin
 catalog at commit `ae0d954` (2026-11-09). Every Dispatcharr call is in
 `aeriotv-setup/dispatcharr_bridge.py`, so changes in Dispatcharr's internals are fixed in one file.
 
 Open questions:
 
-1. **Manifest version.** The catalog carries a manifest version 2 sample (`manifest_version`,
-   declared `capabilities`, `context["data_dir"]`, async actions), but the v0.33.0 loader does not
-   read `manifest_version`. This plugin uses the version 1 form, which needs no capabilities (it
-   only uses the database). Revisit when a Dispatcharr release enforces version 2.
+1. **Manifest version.** `plugin.json` declares `manifest_version` 1 with an empty `capabilities`
+   list: the dev branch parses capabilities at version 1 without enforcing them, and this plugin
+   needs none (it only uses the database). v0.33.0 ignores both keys. Version 2 (enforced guards)
+   is not needed.
 2. **Lists refresh on reload only.** Dispatcharr reads `Plugin.fields` only when it loads a plugin
    (`apps/plugins/loader.py` `_load_plugin`), and its settings form cannot react to a changed field.
    Load User Lists touches Dispatcharr's shared plugin reload token so every worker rebuilds the
@@ -122,8 +128,11 @@ Open questions:
 10. **No multi-select and no field groups.** Dispatcharr 0.33.0 renders info, boolean, number,
    select, text, and string fields only (`frontend/src/components/Field.jsx:16-82`), as one flat list
    (`frontend/src/components/cards/PluginCard.jsx:44-53`); the field serializer has no group or
-   section attribute (`apps/plugins/serializers.py:23-35`). Lists use numbered selects, and sections
-   use Expand switches with Load.
+   section attribute (`apps/plugins/serializers.py:23-35`). The dev branch adds `section` markers
+   (`{"type": "section", "collapsed": true}`) that member fields join with `"section": "<id>"`
+   (`apps/plugins/serializers.py:40-52`, `frontend/src/components/PluginFieldList.jsx`, Plugins.md
+   "Sections"), plus `multiselect`. This plugin uses sections when available and numbered selects
+   for favorites and group order on both, since slot order is the display order.
 13. **App Settings choices.** Number settings offer common values inside the schema's ranges, not
    every allowed value. Free text, colors, sort orders, and other values the schema does not list
    are not offered.
