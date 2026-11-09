@@ -60,6 +60,8 @@ INTRO_STEPS = "\n".join([
 ])
 
 COPY_FROM = "copy_from"
+# Marker in `current` (the target's record by category) saying a record exists.
+RECORD_PRESENT = "__record__"
 ALSO_USERS = "also_users"
 
 LEAVE_EMPTY = {"value": NONE, "label": "Leave empty"}
@@ -224,6 +226,9 @@ def _section_fields(key, base, channels, live_groups, movie_groups, series_group
     table defaults. tables: the build supports `table` fields (dev branch)."""
     current = current or {}
     out: List[Dict[str, Any]] = []
+    now = current_summary(key, current) if channels is not None else None
+    if now:
+        out.append(_info("now:" + key, "Current record", now))
     if key == "expand_live":
         if channels is None:
             out.append(_info("live_note", "Lists", LISTS_NOTE))
@@ -396,3 +401,47 @@ def _copy_from(users: List[str], selected: str) -> Dict[str, Any]:
                    [{"value": NONE, "label": "Nobody"}] + [{"value": u, "label": u} for u in users if u != selected],
                    "Pick a user and run Refresh Lists to fill every section from that user's AerioTV record. "
                    "That user's record is only read.")
+
+
+def _names(names: List[str], limit: int = 5) -> str:
+    shown = ", ".join(names[:limit])
+    return shown + (f", and {len(names) - limit} more" if len(names) > limit else "")
+
+
+def current_summary(key: str, current: Dict[str, Any]) -> Optional[str]:
+    """One short line saying what the target's record holds for a section."""
+    if not current.get(RECORD_PRESENT):
+        return "No AerioTV record yet."
+    hidden = current.get("hiddenGroups") or {}
+    if key == "expand_live":
+        parts = []
+        ids = (current.get("favorites") or {}).get("ids") or []
+        if ids:
+            parts.append(f"{len(ids)} favorites")
+        order = current.get("groupOrder") or {}
+        if order.get("mode") == "manual":
+            parts.append(f"manual order of {len(order.get('order') or [])} groups")
+        elif order.get("mode"):
+            parts.append(f"{order['mode']} group order")
+        live = [g for g in hidden.get("live") or [] if isinstance(g, str)]
+        if live:
+            parts.append(f"{len(live)} hidden groups ({_names(live, 3)})")
+        default = _setting_now(current, "defaultGroup")
+        if default:
+            parts.append(f"default group {default}")
+        return ("Holds " + "; ".join(parts) + ".") if parts else "Nothing for Live TV yet."
+    if key in ("expand_movies", "expand_series"):
+        kind = "movies" if key == "expand_movies" else "series"
+        names = [g for g in hidden.get(kind) or [] if isinstance(g, str)]
+        if not names:
+            return "No hidden categories."
+        return f"{len(names)} hidden categories: {_names(names)}."
+    if key == "expand_app":
+        lane = (current.get("settings") or {}).get("v") or {}
+        count = len([n for n in lane if n != "defaultGroup"])
+        return f"{count} settings set." if count else "No settings set yet."
+    if key == "expand_profiles":
+        rows = (current.get("profiles") or {}).get("rows") or []
+        names = [r[2] or r[1] for r in rows if isinstance(r, list) and len(r) > 2]
+        return f"{len(names)} profiles: {_names(names)}." if names else "No profiles yet."
+    return None

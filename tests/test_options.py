@@ -238,3 +238,18 @@ def test_user_controls_on_native_builds():
     also = by_id["also_users"]
     assert also["type"] == "multiselect" and [o["value"] for o in also["options"]] == ["alice", "bob"]
     assert "section" not in also
+
+
+def test_current_record_lines():
+    cur = dict(CURRENT, hiddenGroups={"live": ["A", "B", "C", "D"], "movies": ["M1"], "series": []})
+    cur[options.RECORD_PRESENT] = True
+    assert options.current_summary("expand_live", cur) == \
+        "Holds 2 favorites; manual order of 2 groups; 4 hidden groups (A, B, C, and 1 more); default group News."
+    assert options.current_summary("expand_movies", cur) == "1 hidden categories: M1."
+    assert options.current_summary("expand_series", cur) == "No hidden categories."
+    assert options.current_summary("expand_app", cur) == "4 settings set."
+    assert options.current_summary("expand_live", {}) == "No AerioTV record yet."
+    fields = options.build_fields(MANIFEST["fields"], usernames=["plugin"], saved={"target_username": "plugin"},
+                                  channels=CHANNELS, live_groups=["News"], native_sections=True, current=cur)
+    first_in_live = next(f for f in fields if f.get("section") == "sec_live")
+    assert first_in_live["id"] == "now:expand_live" and first_in_live["label"] == "Current record"

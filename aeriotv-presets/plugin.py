@@ -81,6 +81,7 @@ def _live_fields():
                 cats = (record or {}).get(schema.CATEGORIES) if isinstance(record, dict) else None
                 current = {name: (sub.get("data") or {}) for name, sub in (cats or {}).items()
                            if isinstance(sub, dict) and isinstance(sub.get("data"), dict)}
+                current[options.RECORD_PRESENT] = isinstance(record, dict)
             except Exception:
                 current = {}
     except Exception:
