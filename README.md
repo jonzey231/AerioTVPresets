@@ -51,6 +51,18 @@ Dispatcharr reads a plugin's lists only when it loads the plugin, and saving set
 reload it. Refresh Lists asks Dispatcharr to reload the plugin, which builds the lists for the saved
 user. Run it again when channels or groups change.
 
+## More tools
+
+1. Copy from: pick a user and run Refresh Lists to fill every section from that user's AerioTV
+   record. That record is only read. Channels and groups the target cannot see are skipped and
+   counted in the notification.
+2. Also apply to: Preview and Apply also write these users, each with its own Fill or Replace.
+   Each user keeps only the favorites and groups it can see. Profiles go to the main User only.
+   One notification sums up the run; the Dispatcharr log has a line per user.
+3. Current record: each section opens with a short line saying what the User's record holds now.
+4. Clear Record: deletes the User's AerioTV sync record after a confirmation. It removes only that
+   record. Devices keep what they have and write a new record on their next sync.
+
 ## What each section writes
 
 | Section | Choices | Written to |
@@ -61,6 +73,7 @@ user. Run it again when channels or groups change.
 | Live TV | A Show switch per group, or one Hidden Live TV groups list past 25 groups | `hiddenGroups.live` |
 | Movies | Hidden movie categories list | `hiddenGroups.movies` |
 | TV Shows | Hidden series categories list | `hiddenGroups.series` |
+| Profiles | Profiles table: user, display name, role (Standard or Child), icon, color, PIN type, and PIN, one row per profile in order | `profiles` (main User only) |
 | App Settings | Appearance, startup, Live TV and guide, player, Multiview, Movies, TV Shows, and DVR, and TV remote settings | `settings` (all devices) |
 | Apply | Fill or Replace | how the record is merged |
 
@@ -77,6 +90,17 @@ Fill and Replace:
 4. The plugin never writes a newer schema version than AerioTV knows, and it refuses a record it
    cannot read.
 
+Profiles:
+
+1. The User is always the default profile. Dispatcharr admins are always Admin; other users are
+   Standard or Child.
+2. A PIN is 4 to 6 digits (Numbers) or 4 to 6 of U, D, L, and R (Directions). It is stored only as a
+   salted SHA-256, the same way the apps store it. Leave a PIN empty to keep the one in the record.
+   PINs are cleared from the plugin page after a successful Apply.
+3. While any profile is a Child, every other profile needs a PIN.
+4. Devices offer these profiles; a profile is added on a device only when someone picks it there.
+5. The Profiles table needs a Dispatcharr build with table fields.
+
 ## How AerioTV picks it up
 
 1. The user signs in to AerioTV with the Dispatcharr server.
@@ -91,7 +115,8 @@ Fill and Replace:
    beyond that, and categories carry no adult flag.
 2. Lists refresh when the plugin loads, or through Refresh Lists and a page reload.
 3. Builds without table fields show 10 favorite slots and 8 group positions instead of tables.
-4. Guide days is not part of the AerioTV settings that sync, so it is not offered.
+4. Guide days is not part of the AerioTV settings that sync (checked against the schema on both
+   apps' main branches), so it is not offered.
 5. App Settings offers settings with a fixed set of values. Number settings offer common values
    within the allowed ranges. Free text, colors, and sort orders are not offered.
 6. If a user still has the AerioTV record key used before November 2026, the plugin waits until
@@ -99,7 +124,7 @@ Fill and Replace:
 
 ## Privacy
 
-The plugin logs user ids, counts, modes, and record sizes. It never logs channel names, group
+The plugin logs user ids, counts, modes, and record sizes. PINs are never logged or kept after Apply. It never logs channel names, group
 names, setting values, or record keys. It makes no network calls.
 
 ## Open items
@@ -121,11 +146,13 @@ scripts/build_zip.sh
 Layout:
 
 - `aeriotv-presets/plugin.json`: manifest (catalog format, `manifest_version` 1, capability `user_data`).
-- `aeriotv-presets/plugin.py`: the `Plugin` class and the Refresh Lists, Preview, and Apply actions.
+- `aeriotv-presets/plugin.py`: the `Plugin` class and the Refresh Lists, Preview, Apply, and Clear Record actions.
 - `aeriotv-presets/options.py`: builds the settings fields and sections. No Django.
 - `aeriotv-presets/app_settings.py`: the App Settings choices and their stored values. No Django.
 - `aeriotv-presets/schema.py`: record shapes, validation, and the record key rule. No Django.
-- `aeriotv-presets/seed.py`: settings parsing, Fill and Replace, and result text. No Django.
+- `aeriotv-presets/copying.py`: Copy from, a record turned back into form choices. No Django.
+- `aeriotv-presets/profiles.py`: profile rows, PIN hashing, and the Child PIN rule. No Django.
+- `aeriotv-presets/seed.py`: settings parsing, Fill and Replace, per-user scoping, and result text. No Django.
 - `aeriotv-presets/dispatcharr_bridge.py`: the only module that imports Dispatcharr.
 - `tests/`: pytest, with fixtures copied from the schema examples.
 
@@ -138,6 +165,8 @@ repository's release zip with `{version}`, plus a pull request titled `[aeriotv-
 
 ## Changelog
 
+- 0.0.7: Copy from another user, Also apply to several users, a Current record line per section,
+  a Profiles section, Clear Record, and clearer steps.
 - 0.0.6: the steps and notes show one line each, and the steps are rewritten to match the flow.
 - 0.0.5: Live TV shows only the Lists note until the lists load; clearer note text.
 - 0.0.4: favorites and manual group order are tables that start from the record; settings show the value in the record now; lists build when the plugin loads, so Load becomes Refresh Lists; declares the `user_data` capability.
