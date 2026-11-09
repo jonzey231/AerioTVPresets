@@ -50,12 +50,12 @@ def _live_fields():
     vod = {"movie": [], "series": []}
     try:
         saved = bridge.saved_settings(_plugin_key())
-        vod = bridge.vod_group_names()
         selected = str(saved.get("target_username") or "").strip()
         if selected and selected != seed.NONE:
             user = bridge.find_user(selected)
             channels = bridge.visible_channels(user)
             live = bridge.visible_group_names(user)
+            vod = bridge.vod_group_names(user)
     except Exception:
         _log.warning("[AERIOTV-SETUP] could not load lists for the chosen user")
         channels = live = None
@@ -155,10 +155,15 @@ class Plugin:
                 )
 
         hidden = request.categories.get(schema.HIDDEN_GROUPS)
-        if hidden and hidden.get("live"):
-            # Switches saved for a previously chosen user can name groups this user never sees.
-            visible_groups = set(bridge.visible_group_names(user))
-            hidden["live"] = [g for g in hidden["live"] if g in visible_groups]
+        if hidden:
+            # Choices saved for a previously chosen user can name groups this user never sees.
+            if hidden.get("live"):
+                visible_groups = set(bridge.visible_group_names(user))
+                hidden["live"] = [g for g in hidden["live"] if g in visible_groups]
+            if hidden.get("movies") or hidden.get("series"):
+                vod = bridge.vod_group_names(user)
+                hidden["movies"] = [g for g in hidden.get("movies", []) if g in set(vod["movie"])]
+                hidden["series"] = [g for g in hidden.get("series", []) if g in set(vod["series"])]
             if not any(hidden.values()):
                 del request.categories[schema.HIDDEN_GROUPS]
         if not request.categories:

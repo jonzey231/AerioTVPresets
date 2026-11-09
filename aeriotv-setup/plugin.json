@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "AerioTV Setup",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Preconfigure a user's AerioTV favorites, group order, hidden groups, and settings. Their AerioTV devices offer Dispatcharr Sync on first launch and start from this setup.",
   "author": "jonzey231",
   "license": "AGPL-3.0-or-later",
@@ -78,11 +78,11 @@
       "options": [
         {
           "value": "fill",
-          "label": "Fill (only add what the record does not have yet)"
+          "label": "Fill: only add what the record does not have yet"
         },
         {
           "value": "replace",
-          "label": "Replace (overwrite the sections set above)"
+          "label": "Replace: overwrite the sections you set here"
         }
       ]
     }

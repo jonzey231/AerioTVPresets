@@ -26,6 +26,15 @@ SHOW_LIVE = "show_live:"
 SHOW_MOVIES = "show_movies:"
 SHOW_SERIES = "show_series:"
 
+# Multiselect fields (dev-branch Dispatcharr): selected values are hidden names.
+HIDDEN_LIVE = "hidden_live"
+HIDDEN_MOVIES = "hidden_movies"
+HIDDEN_SERIES = "hidden_series"
+# Above this many Live TV groups, one multiselect replaces the per-group switches.
+LIVE_SWITCH_LIMIT = 25
+VOD_SCOPE_NOTE = ("Lists categories from the server's active M3U accounts that are enabled for VOD, and only "
+                  "the types this user may watch. Dispatcharr has no per-user category rule beyond that.")
+
 SECTIONS = (
     ("expand_live", "Live TV"),
     ("expand_movies", "Movies"),
@@ -155,8 +164,15 @@ def build_fields(manifest_fields: List[Dict[str, Any]], *, usernames: Optional[L
 
 
 def hidden_from_switches(settings: Dict[str, Any]) -> Dict[str, List[str]]:
-    """Groups whose Show switch is off, as hiddenGroups lists (switch on or absent = shown)."""
+    """Hidden groups as hiddenGroups lists: the multiselect picks first, then every
+    Show switch that is off (switch on or absent = shown)."""
     out = {"live": [], "movies": [], "series": []}
+    for fid, kind in ((HIDDEN_LIVE, "live"), (HIDDEN_MOVIES, "movies"), (HIDDEN_SERIES, "series")):
+        picked = settings.get(fid)
+        if isinstance(picked, list):
+            for name in picked:
+                if isinstance(name, str) and name and name != NONE and name not in out[kind]:
+                    out[kind].append(name)
     for prefix, kind in ((SHOW_LIVE, "live"), (SHOW_MOVIES, "movies"), (SHOW_SERIES, "series")):
         for key in sorted(settings):
             if key.startswith(prefix):
@@ -168,11 +184,17 @@ def hidden_from_switches(settings: Dict[str, Any]) -> Dict[str, List[str]]:
     return out
 
 
-def _section_fields(key, base, channels, live_groups, movie_groups, series_groups) -> List[Dict[str, Any]]:
+def _multiselect(fid: str, label: str, names: Iterable[str], help_text: str) -> Dict[str, Any]:
+    return {"id": fid, "label": label, "type": "multiselect", "default": [], "help_text": help_text,
+            "options": [{"value": n, "label": n} for n in names if n and n != NONE]}
+
+
+def _section_fields(key, base, channels, live_groups, movie_groups, series_groups,
+                    multiselect: bool = False) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     if key == "expand_live":
         if channels is None:
-            out.append(_info("live_note", "Lists", "Choose a user, Save, and run Load to pick favorites and groups."))
+            out.append(_info("live_note", "Lists", "Choose a user, Save, then run Load and reload the page to fill these lists."))
             out.append(base["group_order_mode"])
             return out
         live_opts = name_options(live_groups or [], LEAVE_EMPTY)
@@ -185,17 +207,30 @@ def _section_fields(key, base, channels, live_groups, movie_groups, series_group
             out.append(_select(fid, f"Group position {i}", live_opts))
         out.append(_select("default_group", "Default group", name_options(live_groups or [], LEAVE_AS_IS),
                            "The Live TV group AerioTV opens to."))
-        out.append(_info("live_groups_note", "Live TV groups",
-                         "Turn a group off to hide it. The user can show it again in AerioTV."))
-        out.extend(_show_switches(SHOW_LIVE, live_groups or []))
-    elif key == "expand_movies":
-        out.append(_info("movie_groups_note", "Movie categories",
-                         "Turn a category off to hide it. The user can show it again in AerioTV."))
-        out.extend(_show_switches(SHOW_MOVIES, movie_groups or []))
-    elif key == "expand_series":
-        out.append(_info("series_groups_note", "TV show categories",
-                         "Turn a category off to hide it. The user can show it again in AerioTV."))
-        out.extend(_show_switches(SHOW_SERIES, series_groups or []))
+        if multiselect and len(live_groups or []) > LIVE_SWITCH_LIMIT:
+            out.append(_multiselect(HIDDEN_LIVE, "Hidden Live TV groups", live_groups or [],
+                                    "Pick the groups to hide. The user can show them again in AerioTV."))
+        else:
+            out.append(_info("live_groups_note", "Live TV groups",
+                             "Turn a group off to hide it. The user can show it again in AerioTV."))
+            out.extend(_show_switches(SHOW_LIVE, live_groups or []))
+    elif key in ("expand_movies", "expand_series"):
+        movies = key == "expand_movies"
+        names = (movie_groups if movies else series_groups) or []
+        if channels is None:
+            out.append(_info("movies_note" if movies else "series_note", "Lists",
+                             "Choose a user, Save, then run Load and reload the page to fill these lists."))
+        elif multiselect:
+            out.append(_multiselect(HIDDEN_MOVIES if movies else HIDDEN_SERIES,
+                                    "Hidden movie categories" if movies else "Hidden series categories", names,
+                                    "Pick the categories to hide. The user can show them again in AerioTV. "
+                                    + VOD_SCOPE_NOTE))
+        else:
+            out.append(_info("movie_groups_note" if movies else "series_groups_note",
+                             "Movie categories" if movies else "TV show categories",
+                             "Turn a category off to hide it. The user can show it again in AerioTV. "
+                             + VOD_SCOPE_NOTE))
+            out.extend(_show_switches(SHOW_MOVIES if movies else SHOW_SERIES, names))
     else:
         out.extend(app_settings_fields())
     return out
@@ -229,8 +264,15 @@ def _build_native(manifest_fields, *, usernames, saved, channels, live_groups, m
                        "The Dispatcharr user whose AerioTV setup this writes."))
     for sec_id, key, title, collapsed in NATIVE_SECTIONS:
         out.append({"id": sec_id, "label": title, "type": "section", "collapsed": collapsed})
-        for field in _section_fields(key, base, channels, live_groups, movie_groups, series_groups):
+        for field in _section_fields(key, base, channels, live_groups, movie_groups, series_groups,
+                                     multiselect=True):
             field["section"] = sec_id
             out.append(field)
-    out.append(base["apply_mode"])
+    # Dispatcharr renders fields outside a section above every section
+    # (frontend/src/components/PluginFieldList.jsx), so Apply mode gets its own
+    # open section to sit last.
+    out.append({"id": "sec_apply", "label": "Apply", "type": "section", "collapsed": False})
+    apply_mode = base["apply_mode"]
+    apply_mode["section"] = "sec_apply"
+    out.append(apply_mode)
     return out

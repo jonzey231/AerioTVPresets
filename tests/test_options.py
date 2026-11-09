@@ -121,20 +121,24 @@ def test_native_sections():
     markers = [f for f in fields if f["type"] == "section"]
     assert [(m["id"], m["label"], m["collapsed"]) for m in markers] == [
         ("sec_live", "Live TV", False), ("sec_movies", "Movies", True),
-        ("sec_series", "TV Shows", True), ("sec_app", "App Settings", True)]
+        ("sec_series", "TV Shows", True), ("sec_app", "App Settings", True), ("sec_apply", "Apply", False)]
     by_id = {f["id"]: f for f in fields}
     assert by_id["favorite_1"]["section"] == "sec_live"
     assert by_id["show_live:News"]["section"] == "sec_live"
-    assert by_id["show_movies:Drama"]["section"] == "sec_movies"
-    assert by_id["show_series:Kids"]["section"] == "sec_series"
+    movies = by_id["hidden_movies"]
+    assert (movies["type"], movies["section"], movies["default"]) == ("multiselect", "sec_movies", [])
+    assert movies["options"] == [{"value": "Drama", "label": "Drama"}]
+    assert by_id["hidden_series"]["section"] == "sec_series"
+    assert not any(i.startswith("show_movies:") or i.startswith("show_series:") for i in ids)
+    assert by_id["apply_mode"]["section"] == "sec_apply"
     assert by_id["set:selectedTheme"]["section"] == "sec_app"
     assert by_id["app_hdr:Appearance"]["section"] == "sec_app"
-    for top in ("intro", "target_username", "apply_mode"):
+    for top in ("intro", "target_username"):
         assert "section" not in by_id[top]
     assert ids[0:2] == ["intro", "target_username"] and ids[-1] == "apply_mode"
     for f in fields:
         if f["type"] != "section":
-            assert f.get("section") in (None, "sec_live", "sec_movies", "sec_series", "sec_app")
+            assert f.get("section") in (None, "sec_live", "sec_movies", "sec_series", "sec_app", "sec_apply")
 
 
 def test_native_sections_before_a_user():
@@ -142,3 +146,33 @@ def test_native_sections_before_a_user():
     by_id = {f["id"]: f for f in fields}
     assert by_id["live_note"]["section"] == "sec_live"
     assert by_id["group_order_mode"]["section"] == "sec_live"
+
+
+def test_many_live_groups_use_a_multiselect():
+    groups = [f"G{i:02d}" for i in range(options.LIVE_SWITCH_LIMIT + 1)]
+    fields = options.build_fields(MANIFEST["fields"], usernames=["plugin"], saved={"target_username": "plugin"},
+                                  channels=CHANNELS, live_groups=groups, native_sections=True)
+    ids = [f["id"] for f in fields]
+    assert "hidden_live" in ids and not any(i.startswith("show_live:") for i in ids)
+    few = native({"target_username": "plugin"})
+    assert "hidden_live" not in [f["id"] for f in few]
+
+
+def test_multiselect_picks_map_to_hidden_groups():
+    saved = {"hidden_live": ["Adult", "__none__"], "show_live:Adult": False, "show_live:Kids": False,
+             "hidden_movies": ["Drama"], "hidden_series": "not a list"}
+    assert options.hidden_from_switches(saved) == {"live": ["Adult", "Kids"], "movies": ["Drama"], "series": []}
+
+
+def test_notes_before_load():
+    fields = options.build_fields(MANIFEST["fields"], usernames=["plugin"], native_sections=True)
+    by_id = {f["id"]: f for f in fields}
+    text = "Choose a user, Save, then run Load and reload the page to fill these lists."
+    assert by_id["live_note"]["description"] == text
+    assert by_id["movies_note"]["description"] == text and by_id["movies_note"]["section"] == "sec_movies"
+
+
+def test_apply_mode_wording():
+    labels = [o["label"] for o in next(f for f in MANIFEST["fields"] if f["id"] == "apply_mode")["options"]]
+    assert labels == ["Fill: only add what the record does not have yet",
+                      "Replace: overwrite the sections you set here"]

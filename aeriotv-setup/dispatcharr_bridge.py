@@ -103,16 +103,36 @@ def usernames() -> List[str]:
     return list(User.objects.order_by("username").values_list("username", flat=True))
 
 
-def vod_group_names() -> Dict[str, List[str]]:
-    """Movie and series category names (apps/vod/models.py VODCategory).
+def vod_group_names(user=None) -> Dict[str, List[str]]:
+    """Movie and series category names a user could browse.
 
-    Not scoped per user: v0.33.0 has no per-user VOD category rule to reuse.
+    Scope (apps/vod/models.py VODCategory and M3UVODCategoryRelation): categories
+    linked to an active M3U account with the relation enabled. With a user,
+    movie or series categories are dropped when apps/vod/utils.py
+    is_vod_movies_enabled / is_vod_series_enabled say that user may not watch
+    them (dev branch; skipped where the helpers do not exist). Dispatcharr has
+    no per-user category rule beyond that.
     """
     from apps.vod.models import VODCategory
 
+    allowed = {"movie": True, "series": True}
+    if user is not None:
+        try:
+            from apps.vod.utils import is_vod_movies_enabled, is_vod_series_enabled
+
+            allowed = {"movie": bool(is_vod_movies_enabled(user=user)),
+                       "series": bool(is_vod_series_enabled(user=user))}
+        except ImportError:
+            pass
+    rows = (
+        VODCategory.objects.filter(m3u_relations__enabled=True, m3u_relations__m3u_account__is_active=True)
+        .distinct()
+        .order_by("name")
+        .values_list("name", "category_type")
+    )
     out: Dict[str, List[str]] = {"movie": [], "series": []}
-    for name, kind in VODCategory.objects.order_by("name").values_list("name", "category_type"):
-        if kind in out and name not in out[kind]:
+    for name, kind in rows:
+        if kind in out and allowed[kind] and name not in out[kind]:
             out[kind].append(name)
     return out
 

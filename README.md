@@ -18,11 +18,13 @@ for the vendored excerpt and [CONTRIBUTING.md](CONTRIBUTING.md) for where the co
    the ones you want, save, run Load, and reload. Saved choices in a closed section still apply.
    - **Live TV**: Favorite 1 to 10 (that user's channels, shown as `number name [group]`), Group
      order, Group position 1 to 8, Default group, and a Show switch for every Live TV group the user
-     can see.
-   - **Movies** and **TV Shows**: a Show switch for every movie or series category.
+     can see (a single Hidden Live TV groups list when the user has more than 25 groups).
+   - **Movies** and **TV Shows**: a Hidden movie categories or Hidden series categories list; pick
+     the categories to hide. Builds without collapsible sections show a Show switch per category.
    - **App Settings**: settings from the AerioTV settings allowlist that have a fixed set of values
      (appearance, startup, Live TV and guide, player, Multiview, Movies, TV Shows, and DVR, and TV
      remote), each with Leave as is.
+   - **Apply**: Apply mode, Fill or Replace, always last.
    Anything left on Leave empty or Leave as is is not written. Groups turned off are written as
    hidden groups (`hiddenGroups`); the user can show them again in AerioTV's group manager.
 2. **Show Channels** and **Show Groups** list the same channels and groups as text, for reference.
@@ -85,7 +87,7 @@ AerioTV device that has never signed in as that user.
 
 ## Status
 
-Version 0.1.3. Unit tests pass (`pytest`); it has not yet run inside a Dispatcharr
+Version 0.1.4. Unit tests pass (`pytest`); it has not yet run inside a Dispatcharr
 server.
 
 Requirements: Dispatcharr v0.33.0 or newer. Collapsible sections need a build whose plugin field
@@ -123,8 +125,11 @@ Open questions:
    record wording is an app-side follow-up on both platforms.
 8. **Minimum version.** `min_dispatcharr_version` is 0.33.0, the version read. The first release
    with the App Data API and `channels_queryset_for_user` was not confirmed.
-9. **Movie and series groups.** The hidden movie and series lists show every VOD category on the
-   server; v0.33.0 has no per-user VOD category rule to reuse.
+9. **Movie and series categories.** The lists hold categories linked to an active M3U account with
+   the category enabled, and only the types the user may watch (movies or series, dev branch
+   `apps/vod/utils.py`). Dispatcharr has no per-user category rule beyond that, so a user can be
+   offered categories from an account they do not use, and adult categories are not filtered
+   (categories carry no adult flag).
 10. **No multi-select and no field groups.** Dispatcharr 0.33.0 renders info, boolean, number,
    select, text, and string fields only (`frontend/src/components/Field.jsx:16-82`), as one flat list
    (`frontend/src/components/cards/PluginCard.jsx:44-53`); the field serializer has no group or
