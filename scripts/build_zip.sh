@@ -24,5 +24,13 @@ with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
         info.compress_type = zipfile.ZIP_DEFLATED
         with open(os.path.join(src, name), "rb") as fh:
             zf.writestr(info, fh.read())
+    # Dispatcharr shows logo.png from the plugin folder on the plugin card.
+    logo = os.path.join(root, "logo.png")
+    if os.path.isfile(logo) and "logo.png" not in files:
+        info = zipfile.ZipInfo("aeriotv-presets/logo.png", date_time=(2026, 1, 1, 0, 0, 0))
+        info.external_attr = 0o644 << 16
+        info.compress_type = zipfile.ZIP_DEFLATED
+        with open(logo, "rb") as fh:
+            zf.writestr(info, fh.read())
 print(out)
 PY
