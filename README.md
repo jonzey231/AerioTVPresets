@@ -1,3 +1,5 @@
+<img src="logo.png" width="128" alt="AerioTV">
+
 # AerioTV Presets for Dispatcharr
 
 A Dispatcharr plugin that lets a Dispatcharr admin set up a user's AerioTV app before the user signs
