@@ -11,9 +11,12 @@ for the vendored excerpt and [CONTRIBUTING.md](CONTRIBUTING.md) for where the co
 
 ## What it does
 
-1. You pick a Dispatcharr user and fill in any of the sections in the plugin settings, then save.
-2. **Show Channels** lists the channels that user can see, with the channel ids favorites use.
-   **Show Groups** lists the Live TV group names that user can see.
+1. You pick a Dispatcharr user from the User list, save, and run **Load User Lists**, then reload
+   the page. Every other choice is a list built for that user: Favorite 1 to 10 (that user's
+   channels, shown as `number name [group]`), Group position 1 to 8, Hidden Live TV group 1 to 8,
+   Hidden movie group 1 to 5, Hidden series group 1 to 5, Default group, Theme, Mode, and Apply
+   mode. Anything left on Leave empty or Leave as is is not written.
+2. **Show Channels** and **Show Groups** list the same channels and groups as text, for reference.
 3. **Preview** reports what Apply would add, replace, or keep. It writes nothing.
 4. **Apply** writes the record, after a confirmation.
    - **Fill** (default) only adds sections the record does not have yet. Anything a device already
@@ -28,7 +31,7 @@ counts, and byte sizes, never values or record keys.
 
 Favorites are checked against the channels the chosen user can see (the same visibility rule
 Dispatcharr applies everywhere: user level, adult content preference, and assigned channel
-profiles). Group names are written as typed, exactly as the server names them.
+profiles). Group names are written exactly as the server names them.
 
 ## Install
 
@@ -38,8 +41,8 @@ profiles). Group names are written as typed, exactly as the server names them.
 2. In Dispatcharr, open **Plugins**, choose **Import**, and upload the zip.
 3. Enable the plugin and accept the trust prompt. Plugins run as server code with full database
    access; this one reads users, channels, and groups, and writes App Data for the user you pick.
-4. The User list is read when the plugin loads. After adding a Dispatcharr user, reload plugins to
-   see the new name.
+4. The lists are read when Dispatcharr loads the plugin. Load User Lists asks Dispatcharr to reload
+   it, so after adding a Dispatcharr user or channels, run Load User Lists and reload the page.
 
 The plugin is not in the Dispatcharr plugin catalog yet.
 
@@ -51,12 +54,12 @@ AerioTV device that has never signed in as that user.
 1. On a computer, run `scripts/build_zip.sh` in this repository to build the zip.
 2. In the Dispatcharr web UI, open Plugins, choose Import, and upload the zip.
 3. Turn the AerioTV Setup plugin on and accept the trust prompt.
-4. In the plugin settings, set User to the test user and save.
-5. Run Show Channels. Expected: a list of `id: number name [group]` lines for channels that user
-   can see.
-6. Copy two ids from that list into Favorite channels, separated by a comma.
-7. Set Group order to Manual and type two or three group names from Show Groups, one per line, in
-   the order you want. Leave Apply mode on Fill. Save.
+4. Open the plugin settings, choose the test user in the User list, and save.
+5. Run Load User Lists, then reload the page. Expected: the settings now show Favorite 1 to 10,
+   Group position 1 to 8, the hidden group lists, and Default group.
+6. Set Favorite 1 and Favorite 2 to two channels from the lists.
+7. Set Group order to Manual and Group position 1 to 3 to three groups, in the order you want.
+   Leave Apply mode on Fill. Save.
 8. Run Preview. Expected: "Preview (fill): adds favorites, groupOrder" and "no AerioTV record yet".
 9. Run Apply and confirm. Expected: "Applied (fill): adds favorites, groupOrder".
 10. Run Preview again. Expected: it now says it keeps the device copy of favorites and groupOrder.
@@ -73,7 +76,7 @@ AerioTV device that has never signed in as that user.
 
 ## Status
 
-Version 0.1.0, a scaffold. Unit tests pass (`pytest`); it has not yet run inside a Dispatcharr
+Version 0.1.1. Unit tests pass (`pytest`); it has not yet run inside a Dispatcharr
 server.
 
 Built against Dispatcharr v0.33.0 (commit `1241b3f`, 2026-10-30) and the Dispatcharr plugin
@@ -86,8 +89,11 @@ Open questions:
    declared `capabilities`, `context["data_dir"]`, async actions), but the v0.33.0 loader does not
    read `manifest_version`. This plugin uses the version 1 form, which needs no capabilities (it
    only uses the database). Revisit when a Dispatcharr release enforces version 2.
-2. **User dropdown.** Dispatcharr reads `Plugin.fields` when the plugin loads, so the User list is a
-   snapshot until the next reload. With no database at load, it falls back to a text box.
+2. **Lists refresh on reload only.** Dispatcharr reads `Plugin.fields` only when it loads a plugin
+   (`apps/plugins/loader.py` `_load_plugin`), and its settings form cannot react to a changed field.
+   Load User Lists touches Dispatcharr's shared plugin reload token so every worker rebuilds the
+   fields on the next page load; that token helper is private (`_touch_reload_token`). With no
+   database at load, the User field falls back to a text box.
 3. **Writer identity.** The record envelope's `platform` is `dispatcharr-plugin` and `deviceId` is a
    fixed id. Both apps accept any string there today, but the schema lists only `ios`, `tvos`, and
    `android`; the schema should name the plugin's values.
@@ -102,8 +108,15 @@ Open questions:
    record wording is an app-side follow-up on both platforms.
 8. **Minimum version.** `min_dispatcharr_version` is 0.33.0, the version read. The first release
    with the App Data API and `channels_queryset_for_user` was not confirmed.
-9. **Movie and series groups.** Show Groups lists Live TV groups only; movie and series group names
-   are typed by hand.
+9. **Movie and series groups.** The hidden movie and series lists show every VOD category on the
+   server; v0.33.0 has no per-user VOD category rule to reuse.
+10. **No multi-select.** Dispatcharr 0.33.0 renders info, boolean, number, select, text, and string
+   fields only (`frontend/src/components/Field.jsx`), so lists use numbered selects.
+11. **Select option values must be non-empty.** `apps/plugins/serializers.py` drops a whole field
+   when any option value is blank, which is why 0.1.0 showed no User, Group order, Theme, or Mode
+   control. Leave empty now uses the value `__none__`.
+12. **Settings saved by 0.1.0** (the old text boxes) stay in Dispatcharr's saved settings but are
+   ignored.
 
 ### Catalog submission requirements (not submitting yet)
 
@@ -136,6 +149,7 @@ Layout:
 - `aeriotv-setup/plugin.json`: manifest, settings fields, and actions (catalog format).
 - `aeriotv-setup/plugin.py`: the `Plugin` class Dispatcharr loads.
 - `aeriotv-setup/schema.py`: record shapes, validation, and the record key rule. No Django.
+- `aeriotv-setup/options.py`: builds the select lists from users, channels, and groups. No Django.
 - `aeriotv-setup/seed.py`: settings parsing and the Fill and Replace merge. No Django.
 - `aeriotv-setup/dispatcharr_bridge.py`: the only module that imports Dispatcharr.
 - `tests/`: pytest, with fixtures copied from the schema examples.

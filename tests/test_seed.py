@@ -11,11 +11,11 @@ NOW = "2026-11-09T12:00:00Z"
 def full_settings(**over):
     s = {
         "target_username": "viewer",
-        "favorites": "1042, 77\n903",
+        "favorite_1": "1042", "favorite_2": "77", "favorite_3": "__none__", "favorite_10": "903",
         "group_order_mode": "manual",
-        "group_order": "Sports\nNews\n\nMovies\nNews",
-        "hidden_groups_live": "Adult\nSpanish",
-        "hidden_groups_series": "Kids",
+        "group_1": "Sports", "group_2": "News", "group_3": "__none__", "group_4": "Movies", "group_5": "News",
+        "hidden_live_1": "Adult", "hidden_live_2": "Spanish", "hidden_movies_1": "__none__",
+        "hidden_series_1": "Kids",
         "selected_theme": "Midnight",
         "appearance_mode": "dark",
         "default_group": "Sports",
@@ -34,13 +34,16 @@ def test_parse_matches_fixtures(fixture):
 
 
 def test_parse_blank_sections_are_left_out():
-    req = seed.parse_settings({"target_username": "viewer", "favorites": "5"})
+    req = seed.parse_settings({"target_username": "viewer", "favorite_1": "5", "selected_theme": "__none__",
+                               "group_order_mode": "__none__", "apply_mode": "fill"})
     assert list(req.categories) == ["favorites"]
     assert req.mode == "fill"
 
 
-@pytest.mark.parametrize("over", [{"target_username": ""}, {"favorites": "12, abc"},
-                                  {"apply_mode": "merge"}, {"group_order_mode": "manual", "group_order": ""}])
+@pytest.mark.parametrize("over", [{"target_username": ""}, {"target_username": "__none__"}, {"favorite_2": "abc"},
+                                  {"apply_mode": "merge"},
+                                  {"group_order_mode": "manual", "group_1": "__none__", "group_2": "__none__",
+                                   "group_4": "__none__", "group_5": "__none__"}])
 def test_parse_rejects(over):
     with pytest.raises(seed.SeedError):
         seed.parse_settings(full_settings(**over))
@@ -108,3 +111,13 @@ def test_summary_has_counts_only(fixture):
     summary = seed.summarize(fixture("record.json"))
     assert summary["categories"]["favorites"] == 2
     assert "1042" not in json.dumps(summary)
+
+
+def test_slot_order_is_numeric_not_text():
+    req = seed.parse_settings({"target_username": "v", "favorite_10": "3", "favorite_2": "2", "favorite_1": "1"})
+    assert req.categories["favorites"] == {"ids": [1, 2, 3]}
+
+
+def test_old_text_fields_are_ignored():
+    req = seed.parse_settings({"target_username": "v", "favorites": "1, 2", "group_order": "News"})
+    assert req.categories == {}

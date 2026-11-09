@@ -101,3 +101,49 @@ def usernames() -> List[str]:
     from apps.accounts.models import User
 
     return list(User.objects.order_by("username").values_list("username", flat=True))
+
+
+def vod_group_names() -> Dict[str, List[str]]:
+    """Movie and series category names (apps/vod/models.py VODCategory).
+
+    Not scoped per user: v0.33.0 has no per-user VOD category rule to reuse.
+    """
+    from apps.vod.models import VODCategory
+
+    out: Dict[str, List[str]] = {"movie": [], "series": []}
+    for name, kind in VODCategory.objects.order_by("name").values_list("name", "category_type"):
+        if kind in out and name not in out[kind]:
+            out[kind].append(name)
+    return out
+
+
+def saved_settings(plugin_key: str) -> Dict[str, Any]:
+    """This plugin's saved settings (apps/plugins/models.py PluginConfig.settings)."""
+    from apps.plugins.models import PluginConfig
+
+    cfg = PluginConfig.objects.filter(key=plugin_key).only("settings").first()
+    return dict(cfg.settings or {}) if cfg else {}
+
+
+def request_field_refresh() -> None:
+    """Make every worker rebuild this plugin's fields on the next Plugins page load.
+
+    Dispatcharr reads Plugin.fields only when it loads a plugin
+    (apps/plugins/loader.py _load_plugin). The Plugins list view calls
+    discover_plugins(use_cache=True), which reloads every plugin when the
+    shared .reload_token file is newer than the worker's last reload. Touching
+    that token is what PluginManager._touch_reload_token does.
+    """
+    import os
+
+    from apps.plugins.loader import PluginManager
+
+    pm = PluginManager.get()
+    touch = getattr(pm, "_touch_reload_token", None)
+    if callable(touch):
+        touch()
+        return
+    path = os.path.join(pm.plugins_dir, ".reload_token")
+    with open(path, "a", encoding="utf-8"):
+        pass
+    os.utime(path, None)

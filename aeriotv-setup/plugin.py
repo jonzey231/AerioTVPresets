@@ -7,13 +7,13 @@ from context["settings"]. Field and action declarations live in plugin.json.
 
 from __future__ import annotations
 
-import copy
 import json
 import logging
 import os
+import re
 
 from . import dispatcharr_bridge as bridge
-from . import schema, seed
+from . import options, schema, seed
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(_HERE, "plugin.json"), "r", encoding="utf-8") as _fh:
@@ -23,23 +23,43 @@ LIST_LIMIT = 300
 _log = logging.getLogger("plugins.aeriotv_setup")
 
 
-def _user_field(field):
-    """Turn the User text box into a dropdown of Dispatcharr users when possible.
+def _plugin_key() -> str:
+    """The key Dispatcharr installs this folder under (apps/plugins/api_views.py _sanitize_plugin_key)."""
+    base = os.path.basename(_HERE).replace(" ", "_").replace("-", "_").lower()
+    return re.sub(r"[^a-z0-9_]", "_", base).strip("._ ") or "plugin"
 
-    Dispatcharr reads Plugin.fields when the plugin loads, so the list refreshes
-    on a plugin reload. On any failure the text box stays.
+
+def _live_fields():
+    """Fields with users, channels, and groups read from the database now.
+
+    Dispatcharr reads this when it loads the plugin. Any failure (for example no
+    database yet) falls back to the manifest fields.
     """
+    manifest_fields = _MANIFEST["fields"]
     try:
         names = bridge.usernames()
     except Exception:
-        return field
-    if not names:
-        return field
-    out = dict(field)
-    out["type"] = "select"
-    out["options"] = [{"value": "", "label": "Choose a user"}] + [{"value": n, "label": n} for n in names]
-    out.pop("placeholder", None)
-    return out
+        return options.build_fields(manifest_fields, usernames=None)
+    selected = seed.NONE
+    channels = live = None
+    vod = {"movie": [], "series": []}
+    try:
+        saved = bridge.saved_settings(_plugin_key())
+        selected = str(saved.get("target_username") or "").strip()
+        if selected and selected != seed.NONE:
+            user = bridge.find_user(selected)
+            channels = bridge.visible_channels(user)
+            live = bridge.visible_group_names(user)
+            vod = bridge.vod_group_names()
+    except Exception:
+        _log.warning("[AERIOTV-SETUP] could not load lists for the chosen user")
+        channels = live = None
+    return options.build_fields(
+        manifest_fields, usernames=names,
+        selected_user="" if selected == seed.NONE else selected,
+        channels=channels, live_groups=live,
+        movie_groups=vod.get("movie"), series_groups=vod.get("series"),
+    )
 
 
 class Plugin:
@@ -52,13 +72,13 @@ class Plugin:
 
     @property
     def fields(self):
-        fields = copy.deepcopy(_MANIFEST["fields"])
-        return [(_user_field(f) if f.get("id") == "target_username" else f) for f in fields]
+        return _live_fields()
 
     def run(self, action, params, context):
         logger = (context or {}).get("logger") or _log
         settings = (context or {}).get("settings") or {}
         handler = {
+            "load_lists": self._load_lists,
             "show_channels": self._show_channels,
             "show_groups": self._show_groups,
             "preview": lambda s, lg: self._apply(s, lg, write=False),
@@ -77,10 +97,17 @@ class Plugin:
     # ------------------------------------------------------------ actions
 
     def _target(self, settings):
-        username = (settings.get("target_username") or "").strip()
-        if not username:
+        username = str(settings.get("target_username") or "").strip()
+        if not username or username == seed.NONE:
             raise seed.SeedError("choose a user first")
         return bridge.find_user(username)
+
+    def _load_lists(self, settings, logger):
+        user = self._target(settings)
+        count = len(bridge.visible_channels(user))
+        bridge.request_field_refresh()
+        logger.info("[AERIOTV-SETUP] lists requested for user %s: %d channels", user.pk, count)
+        return {"status": "ok", "message": f"Loaded {count} channels for this user. Reload the page to see the lists."}
 
     def _show_channels(self, settings, logger):
         user = self._target(settings)

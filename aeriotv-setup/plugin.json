@@ -1,6 +1,6 @@
 {
   "name": "AerioTV Setup",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Preconfigure a user's AerioTV favorites, group order, hidden groups, and settings. Their AerioTV devices offer Dispatcharr Sync on first launch and start from this setup.",
   "author": "jonzey231",
   "license": "AGPL-3.0-or-later",
@@ -12,32 +12,23 @@
       "id": "intro",
       "type": "info",
       "label": "How it works",
-      "description": "Fill in the user and any of the sections below, save, then run Preview and Apply. Blank sections are left alone. Use Show Channels and Show Groups to find channel ids and group names for that user."
+      "description": "1. Pick a user and run Load User Lists, then reload this page. 2. Pick favorites, group order, hidden groups, and settings from the lists. 3. Save, run Preview, then Apply. Anything left on Leave empty or Leave as is is not written."
     },
     {
       "id": "target_username",
       "label": "User",
       "type": "string",
       "default": "",
-      "placeholder": "Dispatcharr username",
-      "help_text": "The Dispatcharr user whose AerioTV setup this writes."
-    },
-    {
-      "id": "favorites",
-      "label": "Favorite channels",
-      "type": "text",
-      "default": "",
-      "placeholder": "1042, 77, 903",
-      "help_text": "Channel ids in display order, separated by commas or new lines. Not channel numbers."
+      "help_text": "The Dispatcharr user whose AerioTV setup this writes. Becomes a list of users once the plugin has loaded."
     },
     {
       "id": "group_order_mode",
       "label": "Group order",
       "type": "select",
-      "default": "",
+      "default": "__none__",
       "options": [
         {
-          "value": "",
+          "value": "__none__",
           "label": "Leave as is"
         },
         {
@@ -50,46 +41,18 @@
         },
         {
           "value": "manual",
-          "label": "Manual (use the list below)"
+          "label": "Manual (use the positions below)"
         }
       ]
-    },
-    {
-      "id": "group_order",
-      "label": "Manual group order",
-      "type": "text",
-      "default": "",
-      "help_text": "One Live TV group name per line, exactly as the server names it."
-    },
-    {
-      "id": "hidden_groups_live",
-      "label": "Hidden Live TV groups",
-      "type": "text",
-      "default": "",
-      "help_text": "One group name per line."
-    },
-    {
-      "id": "hidden_groups_movies",
-      "label": "Hidden movie groups",
-      "type": "text",
-      "default": "",
-      "help_text": "One group name per line."
-    },
-    {
-      "id": "hidden_groups_series",
-      "label": "Hidden series groups",
-      "type": "text",
-      "default": "",
-      "help_text": "One group name per line."
     },
     {
       "id": "selected_theme",
       "label": "Theme",
       "type": "select",
-      "default": "",
+      "default": "__none__",
       "options": [
         {
-          "value": "",
+          "value": "__none__",
           "label": "Leave as is"
         },
         {
@@ -126,10 +89,10 @@
       "id": "appearance_mode",
       "label": "Mode",
       "type": "select",
-      "default": "",
+      "default": "__none__",
       "options": [
         {
-          "value": "",
+          "value": "__none__",
           "label": "Leave as is"
         },
         {
@@ -147,13 +110,6 @@
       ]
     },
     {
-      "id": "default_group",
-      "label": "Default group",
-      "type": "string",
-      "default": "",
-      "help_text": "The Live TV group AerioTV opens to, exactly as the server names it."
-    },
-    {
       "id": "apply_mode",
       "label": "Apply mode",
       "type": "select",
@@ -165,23 +121,30 @@
         },
         {
           "value": "replace",
-          "label": "Replace (overwrite the sections filled in above)"
+          "label": "Replace (overwrite the sections set above)"
         }
       ]
     }
   ],
   "actions": [
     {
+      "id": "load_lists",
+      "label": "Load User Lists",
+      "description": "Fills the channel and group lists for the chosen user. Save the user first, run this, then reload the page.",
+      "button_label": "Load",
+      "button_variant": "filled"
+    },
+    {
       "id": "show_channels",
       "label": "Show Channels",
-      "description": "Lists the channels this user can see, with ids and groups.",
+      "description": "Lists the channels this user can see, with ids and groups. For reference only.",
       "button_label": "Show",
       "button_variant": "outline"
     },
     {
       "id": "show_groups",
       "label": "Show Groups",
-      "description": "Lists the Live TV groups this user can see.",
+      "description": "Lists the Live TV groups this user can see. For reference only.",
       "button_label": "Show",
       "button_variant": "outline"
     },

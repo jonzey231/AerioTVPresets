@@ -43,19 +43,6 @@ class SeedRequest:
     categories: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
 
-def _lines(text: Any) -> List[str]:
-    if not text:
-        return []
-    if not isinstance(text, str):
-        raise SeedError("expected text")
-    out: List[str] = []
-    for line in text.splitlines():
-        name = line.strip()
-        if name and name not in out:
-            out.append(name)
-    return out
-
-
 def parse_channel_ids(text: Any) -> List[int]:
     """Comma, space, or newline separated channel ids, order kept, repeats dropped."""
     if not text:
@@ -74,23 +61,56 @@ def parse_channel_ids(text: Any) -> List[int]:
     return ids
 
 
+NONE = "__none__"
+
+
+def _value(settings: Dict[str, Any], key: str) -> str:
+    """A saved setting as a string; blank and the Leave empty sentinel read as ""."""
+    raw = settings.get(key)
+    if raw is None:
+        return ""
+    value = str(raw).strip()
+    return "" if value == NONE else value
+
+
+def _slots(settings: Dict[str, Any], prefix: str) -> List[str]:
+    """Values of prefix_1, prefix_2, ... in slot order, empties skipped, repeats dropped."""
+    numbered = []
+    for key in settings:
+        if key.startswith(prefix + "_") and key[len(prefix) + 1:].isdigit():
+            numbered.append((int(key[len(prefix) + 1:]), key))
+    out: List[str] = []
+    for _, key in sorted(numbered):
+        value = _value(settings, key)
+        if value and value not in out:
+            out.append(value)
+    return out
+
+
 def parse_settings(settings: Dict[str, Any]) -> SeedRequest:
-    """Build a SeedRequest from the plugin's saved settings (plugin.json fields)."""
-    username = (settings.get("target_username") or "").strip()
+    """Build a SeedRequest from the plugin's saved settings.
+
+    Reads the select slots (favorite_N, group_N, hidden_live_N, hidden_movies_N,
+    hidden_series_N). The 0.1.0 text fields (favorites, group_order,
+    hidden_groups_*) are ignored on purpose: Dispatcharr keeps old keys in the
+    saved settings after the fields are gone, and the admin can no longer see them.
+    """
+    settings = dict(settings or {})
+    username = _value(settings, "target_username")
     if not username:
         raise SeedError("choose a user first")
-    mode = settings.get("apply_mode") or MODE_FILL
+    mode = _value(settings, "apply_mode") or MODE_FILL
     if mode not in MODES:
         raise SeedError("apply mode must be fill or replace")
 
     cats: Dict[str, Dict[str, Any]] = {}
 
-    ids = parse_channel_ids(settings.get("favorites"))
+    ids = parse_channel_ids(" ".join(_slots(settings, "favorite")))
     if ids:
         cats[schema.FAVORITES] = {"ids": ids}
 
-    order = _lines(settings.get("group_order"))
-    order_mode = settings.get("group_order_mode") or ""
+    order = _slots(settings, "group")
+    order_mode = _value(settings, "group_order_mode")
     if order_mode:
         if order_mode == "manual" and not order:
             raise SeedError("manual group order needs at least one group")
@@ -99,19 +119,19 @@ def parse_settings(settings: Dict[str, Any]) -> SeedRequest:
         cats[schema.GROUP_ORDER] = {"mode": "manual", "order": order}
 
     hidden = {
-        "live": _lines(settings.get("hidden_groups_live")),
-        "movies": _lines(settings.get("hidden_groups_movies")),
-        "series": _lines(settings.get("hidden_groups_series")),
+        "live": _slots(settings, "hidden_live"),
+        "movies": _slots(settings, "hidden_movies"),
+        "series": _slots(settings, "hidden_series"),
     }
     if any(hidden.values()):
         cats[schema.HIDDEN_GROUPS] = hidden
 
     lane: Dict[str, Any] = {}
-    if settings.get("selected_theme"):
-        lane["selectedTheme"] = settings["selected_theme"]
-    if settings.get("appearance_mode"):
-        lane["appearanceMode"] = settings["appearance_mode"]
-    default_group = (settings.get("default_group") or "").strip()
+    if _value(settings, "selected_theme"):
+        lane["selectedTheme"] = _value(settings, "selected_theme")
+    if _value(settings, "appearance_mode"):
+        lane["appearanceMode"] = _value(settings, "appearance_mode")
+    default_group = _value(settings, "default_group")
     if default_group:
         lane["defaultGroup"] = default_group
     if lane:

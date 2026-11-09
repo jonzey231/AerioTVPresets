@@ -8,7 +8,7 @@ def test_plugin_loads_without_dispatcharr():
     # No Django here, so the User field stays a text box.
     user = next(f for f in p.fields if f["id"] == "target_username")
     assert user["type"] == "string"
-    assert {a["id"] for a in p.actions} == {"show_channels", "show_groups", "preview", "apply"}
+    assert {a["id"] for a in p.actions} == {"load_lists", "show_channels", "show_groups", "preview", "apply"}
 
 
 def test_unknown_action():
