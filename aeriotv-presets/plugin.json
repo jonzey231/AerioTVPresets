@@ -6,8 +6,8 @@
   "author": "jonzey231",
   "license": "AGPL-3.0-or-later",
   "min_dispatcharr_version": "0.33.0",
-  "repo_url": "https://github.com/jonzey231/AerioTVDispatcharrPlugin",
-  "help_url": "https://github.com/jonzey231/AerioTVDispatcharrPlugin",
+  "repo_url": "https://github.com/jonzey231/AerioTVPresets",
+  "help_url": "https://github.com/jonzey231/AerioTVPresets",
   "fields": [
     {
       "id": "intro",

@@ -27,7 +27,7 @@ and [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Install
 
 1. Download `aeriotv-presets-plugin-<version>.zip` from the
-   [Releases](https://github.com/jonzey231/AerioTVDispatcharrPlugin/releases) page, or build it
+   [Releases](https://github.com/jonzey231/AerioTVPresets/releases) page, or build it
    from a checkout with `scripts/build_zip.sh` (writes `dist/`).
 2. In Dispatcharr, open Plugins, choose Install Plugin (or Import), and upload the zip.
 3. Turn the plugin on and accept the trust prompt. Plugins run as server code; this one reads
