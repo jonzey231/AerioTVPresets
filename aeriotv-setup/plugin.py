@@ -19,7 +19,6 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(_HERE, "plugin.json"), "r", encoding="utf-8") as _fh:
     _MANIFEST = json.load(_fh)
 
-LIST_LIMIT = 300
 _log = logging.getLogger("plugins.aeriotv_setup")
 
 
@@ -84,20 +83,19 @@ class Plugin:
         settings = (context or {}).get("settings") or {}
         handler = {
             "load_lists": self._load_lists,
-            "show_channels": self._show_channels,
-            "show_groups": self._show_groups,
             "preview": lambda s, lg: self._apply(s, lg, write=False),
             "apply": lambda s, lg: self._apply(s, lg, write=True),
         }.get(action)
         if handler is None:
-            return {"status": "error", "message": "Unknown action"}
+            raise ActionError("Unknown action.")
         try:
             return handler(settings, logger)
         except (seed.SeedError, schema.SchemaError) as exc:
-            return {"status": "error", "message": str(exc)}
+            logger.info("[AERIOTV-SETUP] %s refused: %s", action, exc)
+            raise ActionError(_sentence(str(exc))) from None
         except bridge.BridgeError as exc:
             logger.warning("[AERIOTV-SETUP] %s failed: %s (%s)", action, exc.code, exc.status)
-            return {"status": "error", "message": f"{exc} ({exc.code})"}
+            raise ActionError(_sentence(f"{exc} ({exc.code})")) from None
 
     # ------------------------------------------------------------ actions
 
@@ -109,36 +107,17 @@ class Plugin:
 
     def _load_lists(self, settings, logger):
         user = self._target(settings)
-        count = len(bridge.visible_channels(user))
+        channels = len(bridge.visible_channels(user))
+        groups = len(bridge.visible_group_names(user))
         bridge.request_field_refresh()
-        logger.info("[AERIOTV-SETUP] lists requested for user %s: %d channels", user.pk, count)
-        return {"status": "ok", "message": f"Loaded {count} channels for this user. Reload the page to see the expanded sections."}
-
-    def _show_channels(self, settings, logger):
-        user = self._target(settings)
-        rows = bridge.visible_channels(user)
-        lines = []
-        for row in rows[:LIST_LIMIT]:
-            number = row.get("channel_number")
-            number = "" if number is None else (f"{number:g} " if isinstance(number, float) else f"{number} ")
-            group = row.get("group_name") or "no group"
-            lines.append(f"{row['id']}: {number}{row['name']} [{group}]")
-        more = len(rows) - len(lines)
-        if more > 0:
-            lines.append(f"and {more} more")
-        logger.info("[AERIOTV-SETUP] listed channels for user %s: %d", user.pk, len(rows))
-        return {"status": "ok", "message": "\n".join(lines) or "This user cannot see any channels."}
-
-    def _show_groups(self, settings, logger):
-        user = self._target(settings)
-        names = bridge.visible_group_names(user)
-        logger.info("[AERIOTV-SETUP] listed groups for user %s: %d", user.pk, len(names))
-        return {"status": "ok", "message": "\n".join(names) or "This user cannot see any groups."}
+        logger.info("[AERIOTV-SETUP] lists requested for user %s: channels=%d groups=%d", user.pk, channels, groups)
+        return {"status": "ok",
+                "message": f"Loaded {channels} channels and {groups} groups for {user.username}. Reload the page."}
 
     def _apply(self, settings, logger, *, write):
         request = seed.parse_settings(settings)
         if not request.categories:
-            raise seed.SeedError("nothing to apply: fill in at least one section")
+            raise seed.SeedError("nothing to apply; set at least one section")
         user = bridge.find_user(request.username)
         key = schema.user_key(user.username)
         if key is None:
@@ -149,10 +128,7 @@ class Plugin:
             visible = {row["id"] for row in bridge.visible_channels(user)}
             unknown = [i for i in fav["ids"] if i not in visible]
             if unknown:
-                raise seed.SeedError(
-                    f"{len(unknown)} favorite id(s) are not channels this user can see: "
-                    + ", ".join(str(i) for i in unknown[:20])
-                )
+                raise seed.SeedError(f"{len(unknown)} favorite(s) are not channels {user.username} can see; run Load")
 
         hidden = request.categories.get(schema.HIDDEN_GROUPS)
         if hidden:
@@ -167,35 +143,32 @@ class Plugin:
             if not any(hidden.values()):
                 del request.categories[schema.HIDDEN_GROUPS]
         if not request.categories:
-            raise seed.SeedError("nothing to apply: fill in at least one section")
+            raise seed.SeedError("nothing to apply; set at least one section")
 
         keys = bridge.list_keys(user)
         blocked, _legacy = seed.legacy_conflict(keys, key)
         if blocked:
-            raise seed.SeedError(
-                "this user has an older AerioTV record that a device has not moved yet; "
-                "open AerioTV on one of their devices with Dispatcharr Sync on, then try again"
-            )
+            raise seed.SeedError("an older AerioTV record must move first; open AerioTV as this user with Dispatcharr Sync on")
 
         existing = bridge.read_record(user, key)
         result = seed.merge(existing, request.categories, mode=request.mode, app_version=self.version)
-        parts = []
-        if result.added:
-            parts.append("adds " + ", ".join(result.added))
-        if result.replaced:
-            parts.append("replaces " + ", ".join(result.replaced))
-        if result.kept:
-            parts.append("keeps the device copy of " + ", ".join(result.kept))
-        plan = "; ".join(parts) or "no change"
-
-        if not write:
-            before = seed.describe(seed.summarize(existing))
-            return {"status": "ok", "message": f"Preview ({request.mode}): {plan}. Today the {before}."}
-        if not result.changed:
-            return {"status": "ok", "message": f"Nothing written: {plan}."}
-        size = bridge.write_record(user, key, result.record)
         logger.info(
-            "[AERIOTV-SETUP] wrote record for user %s: mode=%s added=%d replaced=%d bytes=%d",
-            user.pk, request.mode, len(result.added), len(result.replaced), size,
+            "[AERIOTV-SETUP] %s for user %s: mode=%s record=%s add=%s replace=%s keep=%s",
+            "apply" if write else "preview", user.pk, request.mode, seed.describe(seed.summarize(existing)),
+            ",".join(result.added) or "-", ",".join(result.replaced) or "-", ",".join(result.kept) or "-",
         )
-        return {"status": "ok", "message": f"Applied ({request.mode}): {plan}. Their AerioTV devices pick it up on the next sync."}
+        if not write or not result.changed:
+            return {"status": "ok", "message": seed.toast(request.mode, result, request.categories, write=write)}
+        size = bridge.write_record(user, key, result.record)
+        logger.info("[AERIOTV-SETUP] wrote record for user %s: bytes=%d", user.pk, size)
+        return {"status": "ok", "message": seed.toast(request.mode, result, request.categories, write=True, size=size)}
+
+
+class ActionError(Exception):
+    """A short, user-facing failure. Dispatcharr shows str(exc) in a red toast
+    (dev branch apps/plugins/api_views.py:886-890, frontend/src/pages/PluginDetail.jsx:378-381)."""
+
+
+def _sentence(text: str) -> str:
+    text = text.strip().rstrip(".")
+    return (text[:1].upper() + text[1:] + ".") if text else "Something went wrong."

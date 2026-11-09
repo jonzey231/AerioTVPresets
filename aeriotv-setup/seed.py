@@ -255,3 +255,42 @@ def legacy_conflict(keys: List[str], record_key: str) -> Tuple[bool, List[str]]:
     """
     legacy = [k for k in keys if k == "app.molinete.aerio" or k.startswith("app.molinete.aerio.")]
     return (bool(legacy) and record_key not in keys), legacy
+
+
+# ---------------------------------------------------------------- toast text
+# Dispatcharr shows an action's result only as a toast (dev branch
+# frontend/src/pages/PluginDetail.jsx:376-381), so these stay one or two lines.
+
+def category_count(name: str, data: Dict[str, Any]) -> str:
+    """Short count for one category, never values: "favorites (2)"."""
+    if name == schema.FAVORITES:
+        return f"favorites ({len(data.get('ids') or [])})"
+    if name == schema.GROUP_ORDER:
+        order = data.get("order") or []
+        mode = data.get("mode", "default")
+        return f"groupOrder ({len(order)} groups)" if mode == "manual" else f"groupOrder ({mode})"
+    if name == schema.HIDDEN_GROUPS:
+        return f"hiddenGroups ({sum(len(data.get(k) or []) for k in schema.HIDDEN_GROUP_KINDS)})"
+    if name == schema.SETTINGS:
+        return f"settings ({sum(len(v) for v in data.values() if isinstance(v, dict))})"
+    return name
+
+
+def toast(mode: str, result: "MergeResult", seed_cats: Dict[str, Dict[str, Any]], *, write: bool,
+          size: Optional[int] = None) -> str:
+    label = "Fill" if mode == MODE_FILL else "Replace"
+    changed = [category_count(n, seed_cats[n]) for n in result.added + result.replaced]
+    kept = list(result.kept)
+    if write:
+        if not changed:
+            return f"Applied ({label}): nothing new; the record already has " + ", ".join(kept) + "."
+        text = f"Applied ({label}): " + ", ".join(changed) + "."
+        if size is not None:
+            text += f" Record {size / 1024:.1f} KB."
+        return text
+    if not changed:
+        return f"Preview ({label}): no change; the record already has " + ", ".join(kept) + "."
+    text = f"Preview ({label}): would {'add' if mode == MODE_FILL else 'write'} " + ", ".join(changed) + "."
+    if kept:
+        text += " Keeps " + ", ".join(kept) + "."
+    return text

@@ -1,3 +1,5 @@
+import pytest
+
 from aeriotv_setup import plugin
 
 
@@ -8,13 +10,14 @@ def test_plugin_loads_without_dispatcharr():
     # No Django here, so the User field stays a text box.
     user = next(f for f in p.fields if f["id"] == "target_username")
     assert user["type"] == "string"
-    assert {a["id"] for a in p.actions} == {"load_lists", "show_channels", "show_groups", "preview", "apply"}
+    assert {a["id"] for a in p.actions} == {"load_lists", "preview", "apply"}
 
 
 def test_unknown_action():
-    assert plugin.Plugin().run("nope", {}, {"settings": {}})["status"] == "error"
+    with pytest.raises(plugin.ActionError):
+        plugin.Plugin().run("nope", {}, {"settings": {}})
 
 
 def test_apply_needs_a_user():
-    out = plugin.Plugin().run("apply", {}, {"settings": {}})
-    assert out == {"status": "error", "message": "choose a user first"}
+    with pytest.raises(plugin.ActionError, match="^Choose a user first.$"):
+        plugin.Plugin().run("apply", {}, {"settings": {}})

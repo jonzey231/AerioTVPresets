@@ -27,7 +27,7 @@ for the vendored excerpt and [CONTRIBUTING.md](CONTRIBUTING.md) for where the co
    - **Apply**: Apply mode, Fill or Replace, always last.
    Anything left on Leave empty or Leave as is is not written. Groups turned off are written as
    hidden groups (`hiddenGroups`); the user can show them again in AerioTV's group manager.
-2. **Show Channels** and **Show Groups** list the same channels and groups as text, for reference.
+2. Results show as a short Dispatcharr notification; the detail (counts only) goes to the Dispatcharr log.
 3. **Preview** reports what Apply would add, replace, or keep. It writes nothing.
 4. **Apply** writes the record, after a confirmation.
    - **Fill** (default) only adds sections the record does not have yet. Anything a device already
@@ -87,7 +87,7 @@ AerioTV device that has never signed in as that user.
 
 ## Status
 
-Version 0.1.4. Unit tests pass (`pytest`); it has not yet run inside a Dispatcharr
+Version 0.1.5. Unit tests pass (`pytest`); it has not yet run inside a Dispatcharr
 server.
 
 Requirements: Dispatcharr v0.33.0 or newer. Collapsible sections need a build whose plugin field

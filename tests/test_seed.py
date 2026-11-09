@@ -134,3 +134,12 @@ def test_app_settings_values_are_typed():
 def test_app_setting_outside_schema_is_refused():
     with pytest.raises(seed.SeedError):
         seed.parse_settings({"target_username": "v", "set:skipBack": "7"})
+
+
+def test_toasts_are_short():
+    cats = {"favorites": {"ids": [1, 2]}, "groupOrder": {"mode": "manual", "order": ["A", "B", "C"]}}
+    new = seed.merge(None, cats, mode="fill", app_version="0.1.5", now=NOW)
+    assert seed.toast("fill", new, cats, write=False) == "Preview (Fill): would add favorites (2), groupOrder (3 groups)."
+    assert seed.toast("fill", new, cats, write=True, size=1946) == "Applied (Fill): favorites (2), groupOrder (3 groups). Record 1.9 KB."
+    again = seed.merge(new.record, cats, mode="fill", app_version="0.1.5", now=NOW)
+    assert seed.toast("fill", again, cats, write=False) == "Preview (Fill): no change; the record already has favorites, groupOrder."

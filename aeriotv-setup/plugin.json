@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "AerioTV Setup",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Preconfigure a user's AerioTV favorites, group order, hidden groups, and settings. Their AerioTV devices offer Dispatcharr Sync on first launch and start from this setup.",
   "author": "jonzey231",
   "license": "AGPL-3.0-or-later",
@@ -94,20 +94,6 @@
       "description": "Builds the lists for the chosen user and the expanded sections. Save first, run this, then reload the page.",
       "button_label": "Load",
       "button_variant": "filled"
-    },
-    {
-      "id": "show_channels",
-      "label": "Show Channels",
-      "description": "Lists the channels this user can see, with ids and groups. For reference only.",
-      "button_label": "Show",
-      "button_variant": "outline"
-    },
-    {
-      "id": "show_groups",
-      "label": "Show Groups",
-      "description": "Lists the Live TV groups this user can see. For reference only.",
-      "button_label": "Show",
-      "button_variant": "outline"
     },
     {
       "id": "preview",
