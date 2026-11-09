@@ -1,9 +1,9 @@
 import json
 import os
 
-from aeriotv_setup import app_settings, options, schema
+from aeriotv_presets import app_settings, options, schema
 
-MANIFEST = json.load(open(os.path.join(os.path.dirname(__file__), "..", "aeriotv-setup", "plugin.json")))
+MANIFEST = json.load(open(os.path.join(os.path.dirname(__file__), "..", "aeriotv-presets", "plugin.json")))
 CHANNELS = [
     {"id": 1042, "channel_number": 5.0, "name": "Five", "group_name": "News"},
     {"id": 77, "channel_number": 7.5, "name": "Seven", "group_name": None},

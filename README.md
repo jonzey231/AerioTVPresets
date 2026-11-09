@@ -1,4 +1,4 @@
-# AerioTV Setup for Dispatcharr
+# AerioTV Presets for Dispatcharr
 
 A Dispatcharr plugin that lets a Dispatcharr admin set up a user's AerioTV app before the user signs
 in: favorite channels, Live TV group order, hidden groups and categories, and app settings such as
@@ -26,7 +26,7 @@ and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Install
 
-1. Download `aeriotv-setup-plugin-<version>.zip` from the
+1. Download `aeriotv-presets-plugin-<version>.zip` from the
    [Releases](https://github.com/jonzey231/AerioTVDispatcharrPlugin/releases) page, or build it
    from a checkout with `scripts/build_zip.sh` (writes `dist/`).
 2. In Dispatcharr, open Plugins, choose Install Plugin (or Import), and upload the zip.
@@ -117,25 +117,25 @@ scripts/build_zip.sh
 
 Layout:
 
-- `aeriotv-setup/plugin.json`: manifest (catalog format, `manifest_version` 1, no capabilities).
-- `aeriotv-setup/plugin.py`: the `Plugin` class and the Load, Preview, and Apply actions.
-- `aeriotv-setup/options.py`: builds the settings fields and sections. No Django.
-- `aeriotv-setup/app_settings.py`: the App Settings choices and their stored values. No Django.
-- `aeriotv-setup/schema.py`: record shapes, validation, and the record key rule. No Django.
-- `aeriotv-setup/seed.py`: settings parsing, Fill and Replace, and result text. No Django.
-- `aeriotv-setup/dispatcharr_bridge.py`: the only module that imports Dispatcharr.
+- `aeriotv-presets/plugin.json`: manifest (catalog format, `manifest_version` 1, no capabilities).
+- `aeriotv-presets/plugin.py`: the `Plugin` class and the Load, Preview, and Apply actions.
+- `aeriotv-presets/options.py`: builds the settings fields and sections. No Django.
+- `aeriotv-presets/app_settings.py`: the App Settings choices and their stored values. No Django.
+- `aeriotv-presets/schema.py`: record shapes, validation, and the record key rule. No Django.
+- `aeriotv-presets/seed.py`: settings parsing, Fill and Replace, and result text. No Django.
+- `aeriotv-presets/dispatcharr_bridge.py`: the only module that imports Dispatcharr.
 - `tests/`: pytest, with fixtures copied from the schema examples.
 
 ## Catalog status
 
 Not submitted. A submission to [Dispatcharr/Plugins](https://github.com/Dispatcharr/Plugins) as an
-external plugin needs a `plugins/aeriotv-setup/plugin.json` there with `name`, `version`, `description`,
+external plugin needs a `plugins/aeriotv-presets/plugin.json` there with `name`, `version`, `description`,
 `author`, `license`, `repo_url`, `source_type: "external"`, and `source_url` pointing at this
-repository's release zip with `{version}`, plus a pull request titled `[aeriotv-setup] ...`.
+repository's release zip with `{version}`, plus a pull request titled `[aeriotv-presets] ...`.
 
 ## Changelog
 
-- 0.0.1: first public release. Earlier internal builds were numbered 0.1.x.
+- 0.0.1: first public release. Earlier internal builds were numbered 0.1.x and named AerioTV Setup; their saved settings carry over.
 
 ## License
 

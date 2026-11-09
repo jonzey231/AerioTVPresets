@@ -1,4 +1,4 @@
-"""Load the plugin folder (aeriotv-setup, a hyphenated slug) as package aeriotv_setup."""
+"""Load the plugin folder (aeriotv-presets, a hyphenated slug) as package aeriotv_presets."""
 
 import importlib.util
 import json
@@ -8,15 +8,15 @@ import sys
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PKG_DIR = os.path.join(ROOT, "aeriotv-setup")
+PKG_DIR = os.path.join(ROOT, "aeriotv-presets")
 FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
 
-if "aeriotv_setup" not in sys.modules:
+if "aeriotv_presets" not in sys.modules:
     spec = importlib.util.spec_from_file_location(
-        "aeriotv_setup", os.path.join(PKG_DIR, "__init__.py"), submodule_search_locations=[PKG_DIR]
+        "aeriotv_presets", os.path.join(PKG_DIR, "__init__.py"), submodule_search_locations=[PKG_DIR]
     )
     module = importlib.util.module_from_spec(spec)
-    sys.modules["aeriotv_setup"] = module
+    sys.modules["aeriotv_presets"] = module
     spec.loader.exec_module(module)
 
 

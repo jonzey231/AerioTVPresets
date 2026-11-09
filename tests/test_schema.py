@@ -1,6 +1,6 @@
 import pytest
 
-from aeriotv_setup import schema
+from aeriotv_presets import schema
 
 
 def test_favorites_fixture(fixture):

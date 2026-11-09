@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from aeriotv_setup import schema, seed
+from aeriotv_presets import schema, seed
 
 NOW = "2026-11-09T12:00:00Z"
 

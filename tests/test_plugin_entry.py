@@ -1,6 +1,6 @@
 import pytest
 
-from aeriotv_setup import plugin
+from aeriotv_presets import plugin
 
 
 def test_plugin_loads_without_dispatcharr():

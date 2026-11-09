@@ -1,4 +1,4 @@
-"""AerioTV Setup: Dispatcharr plugin entry point.
+"""AerioTV Presets: Dispatcharr plugin entry point.
 
 Dispatcharr calls Plugin.run(action, params, context) when an admin clicks an
 action. The UI sends no params; every input is a saved plugin setting, read
@@ -19,18 +19,23 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(_HERE, "plugin.json"), "r", encoding="utf-8") as _fh:
     _MANIFEST = json.load(_fh)
 
-_log = logging.getLogger("plugins.aeriotv_setup")
+_log = logging.getLogger("plugins.aeriotv_presets")
+
+
+# Keys earlier builds were installed under (named AerioTV Setup), so saved
+# settings carry over when an old install is replaced.
+_OLD_KEYS = ("aeriotv-setup", "aeriotv_setup")
 
 
 def _plugin_keys() -> list:
     """Keys this folder may be installed under. Newer Dispatcharr builds keep the
-    folder name as the key ("aeriotv-setup", as /api/plugins/plugins/ reports it);
-    older ones sanitize it to "aeriotv_setup" (apps/plugins/api_views.py
-    _sanitize_plugin_key). Try the folder name first."""
+    folder name as the key ("aeriotv-presets", as /api/plugins/plugins/ reports it);
+    older ones sanitize it to "aeriotv_presets" (apps/plugins/api_views.py
+    _sanitize_plugin_key). Try the folder name first, then the old names."""
     folder = os.path.basename(_HERE)
     base = folder.replace(" ", "_").replace("-", "_").lower()
     sanitized = re.sub(r"[^a-z0-9_]", "_", base).strip("._ ") or "plugin"
-    return [k for k in dict.fromkeys([folder, folder.lower(), sanitized]) if k]
+    return [k for k in dict.fromkeys([folder, folder.lower(), sanitized, *_OLD_KEYS]) if k]
 
 
 def _saved_settings() -> dict:
@@ -69,7 +74,7 @@ def _live_fields():
             live = bridge.visible_group_names(user)
             vod = bridge.vod_group_names(user)
     except Exception:
-        _log.warning("[AERIOTV-SETUP] could not load lists for the chosen user")
+        _log.warning("[AERIOTV-PRESETS] could not load lists for the chosen user")
         channels = live = None
     return options.build_fields(
         manifest_fields, usernames=names, saved=saved,
@@ -104,10 +109,10 @@ class Plugin:
         try:
             return handler(settings, logger)
         except (seed.SeedError, schema.SchemaError) as exc:
-            logger.info("[AERIOTV-SETUP] %s refused: %s", action, exc)
+            logger.info("[AERIOTV-PRESETS] %s refused: %s", action, exc)
             raise ActionError(_sentence(str(exc))) from None
         except bridge.BridgeError as exc:
-            logger.warning("[AERIOTV-SETUP] %s failed: %s (%s)", action, exc.code, exc.status)
+            logger.warning("[AERIOTV-PRESETS] %s failed: %s (%s)", action, exc.code, exc.status)
             raise ActionError(_sentence(f"{exc} ({exc.code})")) from None
 
     # ------------------------------------------------------------ actions
@@ -123,7 +128,7 @@ class Plugin:
         channels = len(bridge.visible_channels(user))
         groups = len(bridge.visible_group_names(user))
         bridge.request_field_refresh()
-        logger.info("[AERIOTV-SETUP] lists requested for user %s: channels=%d groups=%d", user.pk, channels, groups)
+        logger.info("[AERIOTV-PRESETS] lists requested for user %s: channels=%d groups=%d", user.pk, channels, groups)
         return {"status": "ok",
                 "message": f"Loaded {channels} channels and {groups} groups for {user.username}. Reload the page."}
 
@@ -166,14 +171,14 @@ class Plugin:
         existing = bridge.read_record(user, key)
         result = seed.merge(existing, request.categories, mode=request.mode, app_version=self.version)
         logger.info(
-            "[AERIOTV-SETUP] %s for user %s: mode=%s record=%s add=%s replace=%s keep=%s",
+            "[AERIOTV-PRESETS] %s for user %s: mode=%s record=%s add=%s replace=%s keep=%s",
             "apply" if write else "preview", user.pk, request.mode, seed.describe(seed.summarize(existing)),
             ",".join(result.added) or "-", ",".join(result.replaced) or "-", ",".join(result.kept) or "-",
         )
         if not write or not result.changed:
             return {"status": "ok", "message": seed.toast(request.mode, result, request.categories, write=write)}
         size = bridge.write_record(user, key, result.record)
-        logger.info("[AERIOTV-SETUP] wrote record for user %s: bytes=%d", user.pk, size)
+        logger.info("[AERIOTV-PRESETS] wrote record for user %s: bytes=%d", user.pk, size)
         return {"status": "ok", "message": seed.toast(request.mode, result, request.categories, write=True, size=size)}
 
 
