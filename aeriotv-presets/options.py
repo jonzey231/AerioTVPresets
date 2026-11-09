@@ -48,16 +48,15 @@ EXPAND_DEFAULTS = {"expand_live": True, "expand_movies": False, "expand_series":
 # apps/plugins/loader.py _load_plugin), and saving settings does not reload it
 # (loader.py update_settings), so the first time a user is chosen the lists
 # appear only after Refresh Lists asks Dispatcharr to reload the plugin.
-LISTS_NOTE = ("Choose a user and Save, then run Refresh Lists and reload the page. "
-              "Run Refresh Lists again after switching users.")
+LISTS_NOTE = "Run Refresh Lists, then reload the page."
 
 INTRO_STEPS = "\n".join([
     "1. Choose a user and Save.",
     "2. Run Refresh Lists, then reload this page. Do this again after switching users.",
     "3. Open each section and make your choices. Anything left on Leave empty or Leave as is is skipped.",
-    "4. In Apply, pick Fill to add only what the record does not have yet, or Replace to overwrite what you set here. Save.",
+    "4. Save.",
     "5. Run Preview to see what would change. Preview writes nothing.",
-    "6. Run Apply and confirm.",
+    "6. In Apply, pick Fill to add only what the record does not have yet, or Replace to overwrite what you set here. Run Apply and confirm.",
 ])
 
 LEAVE_EMPTY = {"value": NONE, "label": "Leave empty"}

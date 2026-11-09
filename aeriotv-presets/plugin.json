@@ -13,7 +13,7 @@
       "id": "intro",
       "type": "info",
       "label": "How it works",
-      "description": "1. Choose a user and Save.\n2. Run Refresh Lists, then reload this page. Do this again after switching users.\n3. Open each section and make your choices. Anything left on Leave empty or Leave as is is skipped.\n4. In Apply, pick Fill to add only what the record does not have yet, or Replace to overwrite what you set here. Save.\n5. Run Preview to see what would change. Preview writes nothing.\n6. Run Apply and confirm."
+      "description": "1. Choose a user and Save.\n2. Run Refresh Lists, then reload this page. Do this again after switching users.\n3. Open each section and make your choices. Anything left on Leave empty or Leave as is is skipped.\n4. Save.\n5. Run Preview to see what would change. Preview writes nothing.\n6. In Apply, pick Fill to add only what the record does not have yet, or Replace to overwrite what you set here. Run Apply and confirm."
     },
     {
       "id": "target_username",
@@ -91,7 +91,7 @@
     {
       "id": "load_lists",
       "label": "Refresh Lists",
-      "description": "Only needed after choosing a different user, or when channels or groups change: rebuilds the lists. Save first, run this, then reload the page.",
+      "description": "Rebuilds the lists for the chosen user. Save first, then reload the page.",
       "button_label": "Refresh",
       "button_variant": "filled"
     },

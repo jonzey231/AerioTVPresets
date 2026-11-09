@@ -43,9 +43,9 @@ The plugin page shows the same steps:
 1. Choose a user and Save.
 2. Run Refresh Lists, then reload this page. Do this again after switching users.
 3. Open each section and make your choices. Anything left on Leave empty or Leave as is is skipped.
-4. In Apply, pick Fill to add only what the record does not have yet, or Replace to overwrite what you set here. Save.
+4. Save.
 5. Run Preview to see what would change. Preview writes nothing.
-6. Run Apply and confirm.
+6. In Apply, pick Fill to add only what the record does not have yet, or Replace to overwrite what you set here. Run Apply and confirm.
 
 Dispatcharr reads a plugin's lists only when it loads the plugin, and saving settings does not
 reload it. Refresh Lists asks Dispatcharr to reload the plugin, which builds the lists for the saved

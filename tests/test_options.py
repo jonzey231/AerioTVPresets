@@ -169,9 +169,9 @@ def test_multiselect_picks_map_to_hidden_groups():
 def test_notes_before_load():
     fields = options.build_fields(MANIFEST["fields"], usernames=["plugin"], native_sections=True)
     by_id = {f["id"]: f for f in fields}
-    first = "Choose a user and Save, then run Refresh Lists and reload the page."
+    first = "Run Refresh Lists, then reload the page."
     assert by_id["live_note"]["description"] == first
-    assert by_id["live_note#2"]["description"] == "Run Refresh Lists again after switching users."
+    assert "live_note#2" not in by_id
     assert by_id["movies_note"]["description"] == first and by_id["movies_note"]["section"] == "sec_movies"
 
 
@@ -220,12 +220,10 @@ def test_notes_become_one_line_each():
     fields = options.build_fields(MANIFEST["fields"], usernames=["plugin"], native_sections=True)
     intro = [f for f in fields if f["id"].startswith("intro")]
     assert len(intro) == 6 and intro[0]["description"] == "1. Choose a user and Save."
-    assert intro[5]["description"] == "6. Run Apply and confirm."
+    assert intro[5]["description"].startswith("6. In Apply, pick Fill")
     assert intro[0]["label"] == "How it works" and "label" not in intro[1]
     lists = [f for f in fields if f["id"].startswith("live_note")]
-    assert [f["description"] for f in lists] == [
-        "Choose a user and Save, then run Refresh Lists and reload the page.",
-        "Run Refresh Lists again after switching users."]
+    assert [f["description"] for f in lists] == ["Run Refresh Lists, then reload the page."]
     assert all(f["section"] == "sec_live" for f in lists)
     for f in fields:
         if f["type"] == "info" and f.get("description"):
