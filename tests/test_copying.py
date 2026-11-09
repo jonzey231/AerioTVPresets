@@ -31,7 +31,7 @@ def test_copy_keeps_what_the_target_can_see():
     assert "set:skipBack" not in out
     assert (report.dropped_channels, report.dropped_groups, report.dropped_settings) == (1, 2, 1)
     assert report.text("alice") == ("Copied favorites (2), group order, hidden groups (2), settings (4) from alice. "
-                                    "Skipped 1 channels, 2 groups, 1 settings the target cannot use.")
+                                    "Skipped 1 channel, 2 groups, 1 setting the target cannot use.")
 
 
 def test_copied_settings_parse_back_to_the_same_record_values():

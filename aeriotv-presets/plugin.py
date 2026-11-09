@@ -252,7 +252,8 @@ class Plugin:
             logger.info("[AERIOTV-PRESETS] wrote record for user %s: bytes=%d", user.pk, size)
         toast = seed.toast(request.mode, result, cats, write=write, size=size)
         if dropped_channels or dropped_groups:
-            toast += f" Skipped {dropped_channels} channels and {dropped_groups} groups {user.username} cannot see."
+            toast += (f" Skipped {options.plural(dropped_channels, 'channel')} and "
+                      f"{options.plural(dropped_groups, 'group')} {user.username} cannot see.")
         return {"changed": result.changed, "toast": toast}
 
 

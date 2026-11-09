@@ -165,6 +165,7 @@ repository's release zip with `{version}`, plus a pull request titled `[aeriotv-
 
 ## Changelog
 
+- 0.0.8: counts read as one or several ("1 profile", "2 groups"), and notifications say group order and hidden groups.
 - 0.0.7: Copy from another user, Also apply to several users, a Current record line per section,
   a Profiles section, Clear Record, and clearer steps.
 - 0.0.6: the steps and notes show one line each, and the steps are rewritten to match the flow.

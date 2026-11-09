@@ -409,6 +409,11 @@ def _copy_from(users: List[str], selected: str) -> Dict[str, Any]:
                    "That user's record is only read.")
 
 
+def plural(count: int, noun: str, many: Optional[str] = None) -> str:
+    """"1 group", "2 groups"; `many` for irregular plurals ("categories")."""
+    return f"{count} {noun if count == 1 else (many or noun + 's')}"
+
+
 def _names(names: List[str], limit: int = 5) -> str:
     shown = ", ".join(names[:limit])
     return shown + (f", and {len(names) - limit} more" if len(names) > limit else "")
@@ -423,15 +428,15 @@ def current_summary(key: str, current: Dict[str, Any]) -> Optional[str]:
         parts = []
         ids = (current.get("favorites") or {}).get("ids") or []
         if ids:
-            parts.append(f"{len(ids)} favorites")
+            parts.append(plural(len(ids), "favorite"))
         order = current.get("groupOrder") or {}
         if order.get("mode") == "manual":
-            parts.append(f"manual order of {len(order.get('order') or [])} groups")
+            parts.append("manual order of " + plural(len(order.get("order") or []), "group"))
         elif order.get("mode"):
             parts.append(f"{order['mode']} group order")
         live = [g for g in hidden.get("live") or [] if isinstance(g, str)]
         if live:
-            parts.append(f"{len(live)} hidden groups ({_names(live, 3)})")
+            parts.append(plural(len(live), "hidden group") + f" ({_names(live, 3)})")
         default = _setting_now(current, "defaultGroup")
         if default:
             parts.append(f"default group {default}")
@@ -441,15 +446,15 @@ def current_summary(key: str, current: Dict[str, Any]) -> Optional[str]:
         names = [g for g in hidden.get(kind) or [] if isinstance(g, str)]
         if not names:
             return "No hidden categories."
-        return f"{len(names)} hidden categories: {_names(names)}."
+        return plural(len(names), "hidden category", "hidden categories") + f": {_names(names)}."
     if key == "expand_app":
         lane = (current.get("settings") or {}).get("v") or {}
         count = len([n for n in lane if n != "defaultGroup"])
-        return f"{count} settings set." if count else "No settings set yet."
+        return plural(count, "setting") + " set." if count else "No settings set yet."
     if key == "expand_profiles":
         rows = (current.get("profiles") or {}).get("rows") or []
         names = [r[2] or r[1] for r in rows if isinstance(r, list) and len(r) > 2]
-        return f"{len(names)} profiles: {_names(names)}." if names else "No profiles yet."
+        return plural(len(names), "profile") + f": {_names(names)}." if names else "No profiles yet."
     return None
 
 

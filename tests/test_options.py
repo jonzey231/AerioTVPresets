@@ -246,7 +246,7 @@ def test_current_record_lines():
     cur[options.RECORD_PRESENT] = True
     assert options.current_summary("expand_live", cur) == \
         "Holds 2 favorites; manual order of 2 groups; 4 hidden groups (A, B, C, and 1 more); default group News."
-    assert options.current_summary("expand_movies", cur) == "1 hidden categories: M1."
+    assert options.current_summary("expand_movies", cur) == "1 hidden category: M1."
     assert options.current_summary("expand_series", cur) == "No hidden categories."
     assert options.current_summary("expand_app", cur) == "4 settings set."
     assert options.current_summary("expand_live", {}) == "No AerioTV record yet."

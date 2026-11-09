@@ -27,11 +27,11 @@ class CopyReport:
         out = f"Copied {', '.join(self.copied)} from {source}."
         dropped = []
         if self.dropped_channels:
-            dropped.append(f"{self.dropped_channels} channels")
+            dropped.append(options.plural(self.dropped_channels, "channel"))
         if self.dropped_groups:
-            dropped.append(f"{self.dropped_groups} groups")
+            dropped.append(options.plural(self.dropped_groups, "group"))
         if self.dropped_settings:
-            dropped.append(f"{self.dropped_settings} settings")
+            dropped.append(options.plural(self.dropped_settings, "setting"))
         if dropped:
             out += " Skipped " + ", ".join(dropped) + " the target cannot use."
         return out

@@ -284,6 +284,13 @@ def legacy_conflict(keys: List[str], record_key: str) -> Tuple[bool, List[str]]:
 # Dispatcharr shows an action's result only as a toast (dev branch
 # frontend/src/pages/PluginDetail.jsx:376-381), so these stay one or two lines.
 
+LABELS = {schema.GROUP_ORDER: "group order", schema.HIDDEN_GROUPS: "hidden groups"}
+
+
+def _n(count: int, noun: str) -> str:
+    return f"{count} {noun if count == 1 else noun + 's'}"
+
+
 def category_count(name: str, data: Dict[str, Any]) -> str:
     """Short count for one category, never values: "favorites (2)"."""
     if name == schema.FAVORITES:
@@ -291,9 +298,9 @@ def category_count(name: str, data: Dict[str, Any]) -> str:
     if name == schema.GROUP_ORDER:
         order = data.get("order") or []
         mode = data.get("mode", "default")
-        return f"groupOrder ({len(order)} groups)" if mode == "manual" else f"groupOrder ({mode})"
+        return f"group order ({_n(len(order), 'group')})" if mode == "manual" else f"group order ({mode})"
     if name == schema.HIDDEN_GROUPS:
-        return f"hiddenGroups ({sum(len(data.get(k) or []) for k in schema.HIDDEN_GROUP_KINDS)})"
+        return f"hidden groups ({sum(len(data.get(k) or []) for k in schema.HIDDEN_GROUP_KINDS)})"
     if name == schema.SETTINGS:
         return f"settings ({sum(len(v) for v in data.values() if isinstance(v, dict))})"
     if name == schema.PROFILES:
@@ -305,7 +312,7 @@ def toast(mode: str, result: "MergeResult", seed_cats: Dict[str, Dict[str, Any]]
           size: Optional[int] = None) -> str:
     label = "Fill" if mode == MODE_FILL else "Replace"
     changed = [category_count(n, seed_cats[n]) for n in result.added + result.replaced]
-    kept = list(result.kept)
+    kept = [LABELS.get(n, n) for n in result.kept]
     if write:
         if not changed:
             return f"Applied ({label}): nothing new; the record already has " + ", ".join(kept) + "."
