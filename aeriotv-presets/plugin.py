@@ -115,6 +115,7 @@ class Plugin:
             "load_lists": self._load_lists,
             "preview": lambda s, lg: self._apply(s, lg, write=False),
             "apply": lambda s, lg: self._apply(s, lg, write=True),
+            "clear_record": self._clear_record,
         }.get(action)
         if handler is None:
             raise ActionError("Unknown action.")
@@ -158,6 +159,20 @@ class Plugin:
         bridge.request_field_refresh()
         logger.info("[AERIOTV-PRESETS] lists requested for user %s: channels=%d groups=%d", user.pk, len(channel_rows), len(live))
         return {"status": "ok", "message": message + " Reload the page."}
+
+    def _clear_record(self, settings, logger):
+        user = self._target(settings)
+        key = schema.user_key(user.username)
+        if key is None:
+            raise seed.SeedError("this user has no AerioTV record name")
+        record = bridge.read_record(user, key)
+        if record is None:
+            return {"status": "ok", "message": f"{user.username} has no AerioTV record."}
+        count = len((record.get(schema.CATEGORIES) or {}) if isinstance(record, dict) else {})
+        bridge.delete_record(user, key)
+        logger.info("[AERIOTV-PRESETS] cleared record for user %s: categories=%d", user.pk, count)
+        bridge.request_field_refresh()
+        return {"status": "ok", "message": f"Cleared the AerioTV record for {user.username} ({count} sections)."}
 
     def _apply(self, settings, logger, *, write):
         request = seed.parse_settings(settings)

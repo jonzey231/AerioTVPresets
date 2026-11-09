@@ -114,6 +114,19 @@
         "title": "Apply AerioTV setup?",
         "message": "This writes the user's AerioTV record. Replace mode overwrites what their devices saved for the sections you filled in."
       }
+    },
+    {
+      "id": "clear_record",
+      "label": "Clear Record",
+      "description": "Deletes the chosen User's AerioTV sync record on this server. It removes only that record; Dispatcharr data and the apps on devices are not touched.",
+      "button_label": "Clear",
+      "button_variant": "outline",
+      "button_color": "red",
+      "confirm": {
+        "required": true,
+        "title": "Clear the AerioTV record?",
+        "message": "This deletes the chosen User's AerioTV sync record on this server. It cannot be undone. Their devices keep what they have and write a new record on their next sync."
+      }
     }
   ],
   "capabilities": [

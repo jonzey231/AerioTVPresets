@@ -210,3 +210,14 @@ def user_infos(usernames: List[str]) -> Dict[str, Any]:
     for u in User.objects.filter(username__in=set(usernames)).only("id", "username", "user_level", "is_superuser", "is_staff"):
         out[u.username] = (u.pk, bool(u.is_superuser or u.is_staff or (u.user_level or 0) >= 10))
     return out
+
+
+def delete_record(user, key: str) -> None:
+    """Delete one App Data key (apps/accounts/app_data.py delete_app_data_key; idempotent)."""
+    from apps.accounts.app_data import AppDataError, delete_app_data_key, validate_app_data_key
+
+    try:
+        validate_app_data_key(key)
+    except AppDataError as exc:
+        raise BridgeError(exc.detail, exc.status_code, exc.code)
+    delete_app_data_key(user.pk, key)
