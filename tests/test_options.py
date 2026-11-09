@@ -43,12 +43,13 @@ def test_no_database_keeps_manifest():
 def test_default_layout_before_a_user():
     fields = options.build_fields(MANIFEST["fields"], usernames=["alice", "plugin"])
     all_valid(fields)
-    assert [f["id"] for f in fields] == [
+    assert [f["id"] for f in fields if "#" not in f["id"]] == [
         "intro", "target_username", "expand_live", "expand_movies", "expand_series", "expand_app",
         "hdr:expand_live", "live_note",
         "hdr:expand_movies", "hdr:expand_series", "hdr:expand_app", "apply_mode"]
-    assert fields[1]["type"] == "select"
-    assert "collapsed" in fields[9]["label"]
+    by_id = {f["id"]: f for f in fields}
+    assert by_id["target_username"]["type"] == "select"
+    assert "collapsed" in by_id["hdr:expand_movies"]["label"]
 
 
 def test_live_section():
@@ -135,7 +136,8 @@ def test_native_sections():
     assert by_id["app_hdr:Appearance"]["section"] == "sec_app"
     for top in ("intro", "target_username"):
         assert "section" not in by_id[top]
-    assert ids[0:2] == ["intro", "target_username"] and ids[-1] == "apply_mode"
+    top_ids = [i for i in ids if "#" not in i]
+    assert top_ids[0:2] == ["intro", "target_username"] and ids[-1] == "apply_mode"
     for f in fields:
         if f["type"] != "section":
             assert f.get("section") in (None, "sec_live", "sec_movies", "sec_series", "sec_app", "sec_apply")
@@ -167,10 +169,10 @@ def test_multiselect_picks_map_to_hidden_groups():
 def test_notes_before_load():
     fields = options.build_fields(MANIFEST["fields"], usernames=["plugin"], native_sections=True)
     by_id = {f["id"]: f for f in fields}
-    text = ("Choose a user and Save, then run Refresh Lists and reload the page. "
-            "Run Refresh Lists again after switching users.")
-    assert by_id["live_note"]["description"] == text
-    assert by_id["movies_note"]["description"] == text and by_id["movies_note"]["section"] == "sec_movies"
+    first = "Choose a user and Save, then run Refresh Lists and reload the page."
+    assert by_id["live_note"]["description"] == first
+    assert by_id["live_note#2"]["description"] == "Run Refresh Lists again after switching users."
+    assert by_id["movies_note"]["description"] == first and by_id["movies_note"]["section"] == "sec_movies"
 
 
 def test_apply_mode_wording():
@@ -212,3 +214,19 @@ def test_now_hints_show_record_values():
     assert by_id["default_group"]["help_text"].endswith("In the record now: News.")
     assert by_id["group_order_mode"]["help_text"] == "In the record now: manual."
     assert "help_text" not in by_id["set:skipBack"]
+
+
+def test_notes_become_one_line_each():
+    fields = options.build_fields(MANIFEST["fields"], usernames=["plugin"], native_sections=True)
+    intro = [f for f in fields if f["id"].startswith("intro")]
+    assert len(intro) == 6 and intro[0]["description"] == "1. Choose a user and Save."
+    assert intro[5]["description"] == "6. Run Apply and confirm."
+    assert intro[0]["label"] == "How it works" and "label" not in intro[1]
+    lists = [f for f in fields if f["id"].startswith("live_note")]
+    assert [f["description"] for f in lists] == [
+        "Choose a user and Save, then run Refresh Lists and reload the page.",
+        "Run Refresh Lists again after switching users."]
+    assert all(f["section"] == "sec_live" for f in lists)
+    for f in fields:
+        if f["type"] == "info" and f.get("description"):
+            assert "\n" not in f["description"]

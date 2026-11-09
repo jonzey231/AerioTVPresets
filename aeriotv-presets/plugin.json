@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "AerioTV Presets",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Preconfigure a user's AerioTV favorites, group order, hidden groups, and settings. Their AerioTV devices offer Dispatcharr Sync on first launch and start from this setup. Requires AerioTV 1.8.45 or newer on Apple devices and AerioTV for Android 0.5.14 or newer.",
   "author": "jonzey231",
   "license": "AGPL-3.0-or-later",
@@ -13,7 +13,7 @@
       "id": "intro",
       "type": "info",
       "label": "How it works",
-      "description": "1. Choose a user and the sections to expand, Save, run Refresh Lists, then reload this page. 2. Make your choices in each section and Save. 3. Run Preview, then Apply. Anything left on Leave empty or Leave as is is not written. Collapsed sections keep their saved choices."
+      "description": "1. Choose a user and Save.\n2. Run Refresh Lists, then reload this page. Do this again after switching users.\n3. Open each section and make your choices. Anything left on Leave empty or Leave as is is skipped.\n4. In Apply, pick Fill to add only what the record does not have yet, or Replace to overwrite what you set here. Save.\n5. Run Preview to see what would change. Preview writes nothing.\n6. Run Apply and confirm."
     },
     {
       "id": "target_username",

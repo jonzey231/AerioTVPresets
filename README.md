@@ -38,20 +38,18 @@ and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Using it
 
-1. Open the plugin's settings and choose the user in the User list.
-2. Save.
-3. Run Refresh Lists, then reload the page. Dispatcharr reads a plugin's lists only when it loads
-   the plugin, and saving settings does not reload it, so this step is needed the first time, after
-   choosing a different user, and when channels or groups change. Until then Live TV shows only a
-   note.
-4. The sections now hold that user's channels and groups, start from what the user's record holds
-   now, and show "In the record now" under each setting the record already has.
-5. Make your choices in Live TV, Movies, TV Shows, and App Settings. Anything left on Leave empty
-   or Leave as is is not written.
-6. In Apply, pick Fill or Replace, then Save.
-7. Run Preview. It reports what Apply would write, in one line.
-8. Run Apply and confirm.
+The plugin page shows the same steps:
 
+1. Choose a user and Save.
+2. Run Refresh Lists, then reload this page. Do this again after switching users.
+3. Open each section and make your choices. Anything left on Leave empty or Leave as is is skipped.
+4. In Apply, pick Fill to add only what the record does not have yet, or Replace to overwrite what you set here. Save.
+5. Run Preview to see what would change. Preview writes nothing.
+6. Run Apply and confirm.
+
+Dispatcharr reads a plugin's lists only when it loads the plugin, and saving settings does not
+reload it. Refresh Lists asks Dispatcharr to reload the plugin, which builds the lists for the saved
+user. Run it again when channels or groups change.
 
 ## What each section writes
 
@@ -140,6 +138,7 @@ repository's release zip with `{version}`, plus a pull request titled `[aeriotv-
 
 ## Changelog
 
+- 0.0.6: the steps and notes show one line each, and the steps are rewritten to match the flow.
 - 0.0.5: Live TV shows only the Lists note until the lists load; clearer note text.
 - 0.0.4: favorites and manual group order are tables that start from the record; settings show the value in the record now; lists build when the plugin loads, so Load becomes Refresh Lists; declares the `user_data` capability.
 - 0.0.3: the description names the minimum AerioTV versions.

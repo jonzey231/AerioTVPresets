@@ -13,6 +13,7 @@ empty" uses the NONE sentinel.
 from __future__ import annotations
 
 import copy
+import re
 from typing import Any, Dict, Iterable, List, Optional
 
 from . import app_settings
@@ -49,6 +50,15 @@ EXPAND_DEFAULTS = {"expand_live": True, "expand_movies": False, "expand_series":
 # appear only after Refresh Lists asks Dispatcharr to reload the plugin.
 LISTS_NOTE = ("Choose a user and Save, then run Refresh Lists and reload the page. "
               "Run Refresh Lists again after switching users.")
+
+INTRO_STEPS = "\n".join([
+    "1. Choose a user and Save.",
+    "2. Run Refresh Lists, then reload this page. Do this again after switching users.",
+    "3. Open each section and make your choices. Anything left on Leave empty or Leave as is is skipped.",
+    "4. In Apply, pick Fill to add only what the record does not have yet, or Replace to overwrite what you set here. Save.",
+    "5. Run Preview to see what would change. Preview writes nothing.",
+    "6. Run Apply and confirm.",
+])
 
 LEAVE_EMPTY = {"value": NONE, "label": "Leave empty"}
 LEAVE_AS_IS = {"value": NONE, "label": "Leave as is"}
@@ -175,7 +185,7 @@ def build_fields(manifest_fields: List[Dict[str, Any]], *, usernames: Optional[L
         out.extend(_section_fields(key, base, channels, live_groups, movie_groups, series_groups))
 
     out.append(base["apply_mode"])
-    return out
+    return split_infos(out)
 
 
 def hidden_from_switches(settings: Dict[str, Any]) -> Dict[str, List[str]]:
@@ -314,9 +324,7 @@ def _build_native(manifest_fields, *, usernames, saved, channels, live_groups, m
     if selected == NONE:
         selected = ""
     intro = base["intro"]
-    intro["description"] = ("1. Choose a user, Save, run Refresh Lists, then reload this page. 2. Make your choices in each "
-                            "section and Save. 3. Run Preview, then Apply. Anything left on Leave empty or Leave as "
-                            "is is not written.")
+    intro["description"] = INTRO_STEPS
     out: List[Dict[str, Any]] = [intro]
     users = [u for u in usernames if u]
     if selected and selected not in users:
@@ -337,4 +345,38 @@ def _build_native(manifest_fields, *, usernames, saved, channels, live_groups, m
     apply_mode = base["apply_mode"]
     apply_mode["section"] = "sec_apply"
     out.append(apply_mode)
+    return split_infos(out)
+
+
+_SENTENCE_BREAK = re.compile(r"(?<=[a-z)][.])\s+(?=[A-Z])")
+
+
+def split_infos(fields: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Give each step or sentence of an info note its own line.
+
+    Dispatcharr renders an info description as one Text block with no line
+    breaks (dev branch frontend/src/components/Field.jsx:20-34), so a note with
+    several lines ("\n") or sentences becomes several info fields; the first
+    keeps the label and the rest have none.
+    """
+    out: List[Dict[str, Any]] = []
+    for field in fields:
+        text = field.get("description") if field.get("type") == "info" else None
+        if not text:
+            out.append(field)
+            continue
+        if "\n" in text:
+            parts = [p.strip() for p in text.split("\n") if p.strip()]
+        else:
+            parts = [p.strip() for p in _SENTENCE_BREAK.split(text) if p.strip()]
+        if len(parts) <= 1:
+            out.append(field)
+            continue
+        for i, part in enumerate(parts):
+            piece = dict(field)
+            piece["description"] = part
+            if i:
+                piece["id"] = f"{field['id']}#{i + 1}"
+                piece.pop("label", None)
+            out.append(piece)
     return out
