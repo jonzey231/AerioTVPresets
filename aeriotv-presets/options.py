@@ -43,6 +43,13 @@ SECTIONS = (
 )
 EXPAND_DEFAULTS = {"expand_live": True, "expand_movies": False, "expand_series": False, "expand_app": False}
 
+# Dispatcharr reads plugin fields only when it loads the plugin (dev branch
+# apps/plugins/loader.py _load_plugin), and saving settings does not reload it
+# (loader.py update_settings), so the first time a user is chosen the lists
+# appear only after Refresh Lists asks Dispatcharr to reload the plugin.
+LISTS_NOTE = ("Choose a user and Save, then run Refresh Lists and reload the page. "
+              "Run Refresh Lists again after switching users.")
+
 LEAVE_EMPTY = {"value": NONE, "label": "Leave empty"}
 LEAVE_AS_IS = {"value": NONE, "label": "Leave as is"}
 
@@ -206,8 +213,7 @@ def _section_fields(key, base, channels, live_groups, movie_groups, series_group
     out: List[Dict[str, Any]] = []
     if key == "expand_live":
         if channels is None:
-            out.append(_info("live_note", "Lists", "Choose a user, Save, then run Refresh Lists and reload the page to fill these lists."))
-            out.append(base["group_order_mode"])
+            out.append(_info("live_note", "Lists", LISTS_NOTE))
             return out
         live_opts = name_options(live_groups or [], LEAVE_EMPTY)
         chan_opts = channel_options(channels)
@@ -237,7 +243,7 @@ def _section_fields(key, base, channels, live_groups, movie_groups, series_group
         names = (movie_groups if movies else series_groups) or []
         if channels is None:
             out.append(_info("movies_note" if movies else "series_note", "Lists",
-                             "Choose a user, Save, then run Refresh Lists and reload the page to fill these lists."))
+                             LISTS_NOTE))
         elif multiselect:
             out.append(_multiselect(HIDDEN_MOVIES if movies else HIDDEN_SERIES,
                                     "Hidden movie categories" if movies else "Hidden series categories", names,

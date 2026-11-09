@@ -40,9 +40,10 @@ and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 1. Open the plugin's settings and choose the user in the User list.
 2. Save.
-3. Run Refresh Lists, then reload the page. Dispatcharr only reads a plugin's lists when it loads
-   the plugin; the plugin builds them for the saved user every time it loads, so this step is only
-   needed after choosing a different user or when channels or groups change.
+3. Run Refresh Lists, then reload the page. Dispatcharr reads a plugin's lists only when it loads
+   the plugin, and saving settings does not reload it, so this step is needed the first time, after
+   choosing a different user, and when channels or groups change. Until then Live TV shows only a
+   note.
 4. The sections now hold that user's channels and groups, start from what the user's record holds
    now, and show "In the record now" under each setting the record already has.
 5. Make your choices in Live TV, Movies, TV Shows, and App Settings. Anything left on Leave empty
@@ -139,6 +140,7 @@ repository's release zip with `{version}`, plus a pull request titled `[aeriotv-
 
 ## Changelog
 
+- 0.0.5: Live TV shows only the Lists note until the lists load; clearer note text.
 - 0.0.4: favorites and manual group order are tables that start from the record; settings show the value in the record now; lists build when the plugin loads, so Load becomes Refresh Lists; declares the `user_data` capability.
 - 0.0.3: the description names the minimum AerioTV versions.
 - 0.0.2: the catalog manifest also declares the Load, Preview, and Apply actions for `manifest_version` 1; the plugin itself is unchanged.

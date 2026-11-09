@@ -45,7 +45,7 @@ def test_default_layout_before_a_user():
     all_valid(fields)
     assert [f["id"] for f in fields] == [
         "intro", "target_username", "expand_live", "expand_movies", "expand_series", "expand_app",
-        "hdr:expand_live", "live_note", "group_order_mode",
+        "hdr:expand_live", "live_note",
         "hdr:expand_movies", "hdr:expand_series", "hdr:expand_app", "apply_mode"]
     assert fields[1]["type"] == "select"
     assert "collapsed" in fields[9]["label"]
@@ -145,7 +145,7 @@ def test_native_sections_before_a_user():
     fields = options.build_fields(MANIFEST["fields"], usernames=["plugin"], native_sections=True)
     by_id = {f["id"]: f for f in fields}
     assert by_id["live_note"]["section"] == "sec_live"
-    assert by_id["group_order_mode"]["section"] == "sec_live"
+    assert "group_order_mode" not in by_id
 
 
 def test_many_live_groups_use_a_multiselect():
@@ -167,7 +167,8 @@ def test_multiselect_picks_map_to_hidden_groups():
 def test_notes_before_load():
     fields = options.build_fields(MANIFEST["fields"], usernames=["plugin"], native_sections=True)
     by_id = {f["id"]: f for f in fields}
-    text = "Choose a user, Save, then run Refresh Lists and reload the page to fill these lists."
+    text = ("Choose a user and Save, then run Refresh Lists and reload the page. "
+            "Run Refresh Lists again after switching users.")
     assert by_id["live_note"]["description"] == text
     assert by_id["movies_note"]["description"] == text and by_id["movies_note"]["section"] == "sec_movies"
 
