@@ -11,7 +11,8 @@ def test_rows_shape_roles_and_default_profile():
     rows = build([{"user": "kid", "name": "Kids", "role": "child", "icon": "paw", "color": "orange",
                    "pin_type": "none", "pin": ""},
                   {"user": "dad", "name": "", "role": "child", "icon": "default", "color": "default",
-                   "pin_type": "numbers", "pin": "2468"}])
+                   "pin_type": "numbers", "pin": "2468"}],
+                 existing=[[7, "kid", "Old", "none", "", "", "child", 5, {}, 0]])
     assert [r[1] for r in rows] == ["kid", "dad"]
     kid, dad = rows
     assert kid == [7, "kid", "Kids", "none", "", "", "child", 1700000000, {"icon": "paw", "color": "orange"}, 0]
@@ -27,9 +28,17 @@ def test_target_is_added_as_the_default_profile():
 
 def test_no_pin_is_written_and_a_device_pin_stays():
     old = [[1, "dad", "Dad", "numbers", "a" * 64, "b" * 32, "admin", 5, {}, 0]]
-    rows = build([{"user": "dad", "pin_type": "numbers", "pin": "1234"}, {"user": "kid", "role": "child"}], existing=old)
+    rows = build([{"user": "dad", "pin_type": "numbers", "pin": "1234"}, {"user": "kid"}], existing=old)
     assert rows[0][3:6] == ["numbers", "a" * 64, "b" * 32]
-    assert rows[1][3:6] == ["none", "", ""] and rows[1][6] == "child"
+    assert rows[1][3:6] == ["none", "", ""] and rows[1][6] == "user"
+
+
+def test_child_only_when_the_record_already_has_it():
+    with pytest.raises(profiles.ProfileError, match="must be created in the AerioTV app"):
+        build([{"user": "kid", "role": "child"}])
+    old = [[7, "kid", "Kids", "numbers", "a" * 64, "b" * 32, "child", 5, {}, 1]]
+    rows = build([{"user": "kid", "name": "Kiddo", "role": "child"}], existing=old)
+    assert rows[1][6] == "child" and rows[1][2] == "Kiddo" and rows[1][4] == "a" * 64
 
 
 def test_unknown_and_repeated_users():

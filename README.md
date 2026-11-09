@@ -73,7 +73,7 @@ user. Run it again when channels or groups change.
 | Live TV | A Show switch per group, or one Hidden Live TV groups list past 25 groups | `hiddenGroups.live` |
 | Movies | Hidden movie categories list | `hiddenGroups.movies` |
 | TV Shows | Hidden series categories list | `hiddenGroups.series` |
-| Profiles | Profiles table: user, display name, role (Standard or Child), icon, and color, one row per profile in order | `profiles` (main User only) |
+| Profiles | Profiles table: user, display name, role (Standard, or Child for a profile already made a Child in the app), icon, and color, one row per profile in order | `profiles` (main User only) |
 | App Settings | Appearance, startup, Live TV and guide, player, Multiview, Movies, TV Shows, and DVR, and TV remote settings | `settings` (all devices) |
 | Apply | Fill or Replace | how the record is merged |
 
@@ -93,7 +93,8 @@ Fill and Replace:
 Profiles:
 
 1. The User is always the default profile. Dispatcharr admins are always Admin; other users are
-   Standard or Child.
+   Standard. Child profiles are created in the AerioTV app; the plugin can only edit a profile that is
+   already a Child in the record, and Preview and Apply refuse a new Child.
 2. The plugin does not set PINs. A new profile has no PIN, and the user sets one on a device. A PIN a
    device already saved for a profile stays as it is.
 3. Devices offer these profiles; a profile is added on a device only when someone picks it there.

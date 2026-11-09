@@ -472,14 +472,15 @@ def _profile_fields(channels, tables: bool, current: Dict[str, Any], users: List
         _info("profiles_help", "",
               "One row per profile on this user's devices, in order. The user is the default profile. "
               "Devices offer these profiles; they are added only when someone picks them on a device. "
-              "Dispatcharr admins are always Admin. Set PINs on the device."),
+              "Dispatcharr admins are always Admin. Child profiles are created in the AerioTV app; "
+              "the plugin can only edit them. Set PINs on the device."),
         {"id": profiles.TABLE, "label": "", "type": "table",
          "default": profiles.table_defaults(target, existing),
          "columns": [
              {"id": "user", "label": "User", "type": "select", "options": [{"value": u, "label": u} for u in users]},
              {"id": "name", "label": "Display name", "type": "string"},
              {"id": "role", "label": "Role", "type": "select",
-              "options": choice(("user", "child"), {"user": "Standard", "child": "Child"})},
+              "options": choice(("user", "child"), {"user": "Standard", "child": "Child (made in the app)"})},
              {"id": "icon", "label": "Icon", "type": "select",
               "options": choice((profiles.DEFAULT_ICON,) + profiles.ICONS)},
              {"id": "color", "label": "Color", "type": "select",

@@ -22,6 +22,9 @@ DEFAULT_ICON = "default"
 DEFAULT_COLOR = "default"
 
 
+CHILD_ONLY_IN_APP = "Child profiles must be created in the AerioTV app; the plugin can only edit them"
+
+
 class ProfileError(ValueError):
     pass
 
@@ -82,6 +85,9 @@ def build_rows(table: Any, *, target: str, users: Dict[str, Tuple[int, bool]], e
         user_id, is_admin = users[username]
         role = "admin" if is_admin else (row.get("role") if row.get("role") in ("user", "child") else "user")
         old = by_user.get(username)
+        if role == "child" and not (old is not None and old[6] == "child"):
+            # A Child profile locks the device behind a PIN only the app can set.
+            raise ProfileError(CHILD_ONLY_IN_APP)
         if old is not None and old[3] in PIN_TYPES and old[3] != "none" and old[4] and old[5]:
             pin_type, pin_hash, pin_salt = old[3], old[4], old[5]
         else:
