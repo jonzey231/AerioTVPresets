@@ -54,6 +54,12 @@ def test_settings_strict_values():
         schema.validate_settings({"v": {"appearanceMode": "dim"}}, strict_names=True)
 
 
+def test_tmdb_key_fixture(fixture):
+    data = fixture("tmdbKey.json")
+    assert schema.validate_tmdb_key(data) == data
+    assert schema.validate_category_data(schema.TMDB_KEY, {"apiKey": ""}) == {"apiKey": ""}
+
+
 def test_record_fixture(fixture):
     record = fixture("record.json")
     assert schema.validate_envelope(record) is record

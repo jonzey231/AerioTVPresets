@@ -3,7 +3,8 @@ saved settings, so the admin can adjust the choices and Apply them to the target
 
 Pure Python, no Django. The source record is only read. Channel ids and group
 names are kept only when the target user can see them; the rest are dropped and
-counted in the report.
+counted in the report. A TMDB API key the source holds is copied into the key
+field; the report names it but never shows it.
 """
 
 from __future__ import annotations
@@ -125,4 +126,15 @@ def record_to_settings(record: Optional[Dict[str, Any]], *, channel_ids: Iterabl
             count += 1
         if count:
             report.copied.append(f"settings ({count})")
+
+    key = schema.tmdb_api_key(_data(record, schema.TMDB_KEY))
+    if key:
+        try:
+            schema.validate_tmdb_key({"apiKey": key})
+        except schema.SchemaError:
+            report.dropped_settings += 1
+        else:
+            out[options.TMDB_KEY_FIELD] = key
+            out[options.TMDB_CLEAR_FIELD] = False
+            report.copied.append("TMDB API key")
     return out, report

@@ -5,7 +5,8 @@ the contract in the AerioTV repos (docs/DispatcharrSyncSchema.md). When the
 two disagree, the AerioTV repos win and this file is fixed to match.
 
 Phase 1 writes four categories: favorites, groupOrder, hiddenGroups, and
-settings. Every other category in a record is round-tripped untouched.
+settings. The plugin also writes profiles (section 4.12) and tmdbKey (section
+4.13). Every other category in a record is round-tripped untouched.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ GROUP_ORDER = "groupOrder"
 HIDDEN_GROUPS = "hiddenGroups"
 SETTINGS = "settings"
 PROFILES = "profiles"
+TMDB_KEY = "tmdbKey"
 PHASE1_CATEGORIES = (FAVORITES, GROUP_ORDER, HIDDEN_GROUPS, SETTINGS)
 
 # Caps from schema sections 4.1, 4.7, and 4.8.
@@ -41,6 +43,11 @@ SETTINGS_LANES = ("v", "tv", "mobile")
 THEMES = ("Aerio", "Midnight", "Sunset", "Forest", "Lavender", "Monochrome", "Light", "Custom")
 APPEARANCE_MODES = ("dark", "light", "system")
 GROUP_TOKEN_MAX = 200
+
+# Section 4.13 sizes a TMDB key at 32 characters, or about 250 for a read
+# access token. The plugin refuses anything longer than this, which keeps the
+# category far inside Dispatcharr's 128 KiB value limit.
+TMDB_KEY_MAX = 1024
 
 
 class SchemaError(ValueError):
@@ -196,7 +203,31 @@ def validate_profiles(data: Any) -> Dict[str, Any]:
         raise SchemaError(str(exc)) from exc
 
 
+def tmdb_api_key(data: Any) -> Optional[str]:
+    """Section 4.13 reader rule: the trimmed key, "" for no key (a missing
+    apiKey reads as ""), or None when the category is malformed."""
+    if not isinstance(data, dict):
+        return None
+    value = data.get("apiKey", "")
+    return value.strip() if isinstance(value, str) else None
+
+
+def validate_tmdb_key(data: Any) -> Dict[str, Any]:
+    """Section 4.13: {"apiKey": "<key>"}, "" = no key. For what this plugin
+    writes: one trimmed line, no spaces or control characters, at most
+    TMDB_KEY_MAX characters. Error text never repeats the key."""
+    if not isinstance(data, dict) or set(data) != {"apiKey"} or not isinstance(data["apiKey"], str):
+        raise SchemaError("tmdbKey must be {\"apiKey\": \"...\"}")
+    key = data["apiKey"]
+    if len(key) > TMDB_KEY_MAX:
+        raise SchemaError(f"the TMDB API key is longer than {TMDB_KEY_MAX} characters")
+    if any(ch.isspace() or not ch.isprintable() for ch in key):
+        raise SchemaError("the TMDB API key must be one line with no spaces")
+    return data
+
+
 VALIDATORS = {
+    TMDB_KEY: validate_tmdb_key,
     PROFILES: validate_profiles,
     FAVORITES: validate_favorites,
     GROUP_ORDER: validate_group_order,

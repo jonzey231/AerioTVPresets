@@ -16,7 +16,7 @@ import copy
 import re
 from typing import Any, Dict, Iterable, List, Optional
 
-from . import app_settings
+from . import app_settings, schema
 
 NONE = "__none__"
 FAVORITE_SLOTS = 10
@@ -63,6 +63,11 @@ COPY_FROM = "copy_from"
 # Marker in `current` (the target's record by category) saying a record exists.
 RECORD_PRESENT = "__record__"
 ALSO_USERS = "also_users"
+
+# TMDB API key (schema 4.13), shown at the end of App Settings. An empty key
+# field leaves the record as it is; the switch is the explicit clear.
+TMDB_KEY_FIELD = "tmdb_api_key"
+TMDB_CLEAR_FIELD = "tmdb_clear"
 
 LEAVE_EMPTY = {"value": NONE, "label": "Leave empty"}
 LEAVE_AS_IS = {"value": NONE, "label": "Leave as is"}
@@ -279,7 +284,29 @@ def _section_fields(key, base, channels, live_groups, movie_groups, series_group
         out.extend(_profile_fields(channels, tables, current, users_for_profiles or [], target))
     else:
         out.extend(app_settings_fields(current))
+        out.extend(tmdb_fields(current))
     return out
+
+
+def tmdb_fields(current: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    """The TMDB API key field and its clear switch. The key is never put in the
+    form from the record: the hint says only whether the record holds one.
+    input_type "password" masks a string field (v0.33.0 and dev
+    frontend/src/components/Field.jsx, apps/plugins/serializers.py input_type)."""
+    held = schema.tmdb_api_key((current or {}).get(schema.TMDB_KEY))
+    key_field = {"id": TMDB_KEY_FIELD, "label": "TMDB API key", "type": "string", "input_type": "password",
+                 "default": "",
+                 "help_text": "The API Key or Read Access Token from themoviedb.org, for every device of the user. "
+                              "Leave empty to keep the key in the record."}
+    if held is not None:
+        _with_now(key_field, "a key" if held else "no key")
+    return [
+        _info("app_hdr:TMDB", "TMDB"),
+        key_field,
+        {"id": TMDB_CLEAR_FIELD, "label": "Clear the TMDB API key", "type": "boolean", "default": False,
+         "help_text": "Replace only. Removes the key from the record. Some devices keep their own key and send "
+                      "it back; to be sure, clear it in AerioTV on the device."},
+    ]
 
 
 FAVORITES_TABLE = "favorites_rows"

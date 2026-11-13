@@ -11,6 +11,11 @@ Merge modes:
   names the admin set are overwritten in the `v` lane; every other name and lane
   stays. Categories the admin left blank, and every non phase 1 category, are
   round-tripped untouched.
+
+tmdbKey (schema 4.13) follows the same modes. Its explicit clear ({"apiKey": ""})
+is Replace only, and it is written only over a record that holds a key: a clear
+never starts the category, because devices would read a fresh "" as a clear
+newer than every key.
 """
 
 from __future__ import annotations
@@ -63,6 +68,12 @@ def parse_channel_ids(text: Any) -> List[int]:
 
 
 NONE = "__none__"
+CLEAR_NEEDS_REPLACE = "clearing the TMDB API key needs Replace"
+
+
+def _is_on(raw: Any) -> bool:
+    """A saved boolean field, which Dispatcharr may store as a string."""
+    return raw is True or raw == "true"
 
 
 def _value(settings: Dict[str, Any], key: str) -> str:
@@ -108,10 +119,11 @@ def parse_settings(settings: Dict[str, Any]) -> SeedRequest:
     """Build a SeedRequest from the plugin's saved settings.
 
     Reads the select slots (favorite_N, group_N), the Show switches
-    (show_live:, show_movies:, show_series:), and the App Settings selects
-    (set:<name>). Text fields from earlier internal builds (favorites, group_order,
-    hidden_groups_*) are ignored on purpose: Dispatcharr keeps old keys in the
-    saved settings after the fields are gone, and the admin can no longer see them.
+    (show_live:, show_movies:, show_series:), the App Settings selects
+    (set:<name>), and the TMDB API key field and its clear switch. Text fields
+    from earlier internal builds (favorites, group_order, hidden_groups_*) are
+    ignored on purpose: Dispatcharr keeps old keys in the saved settings after
+    the fields are gone, and the admin can no longer see them.
     """
     settings = dict(settings or {})
     username = _value(settings, "target_username")
@@ -151,6 +163,17 @@ def parse_settings(settings: Dict[str, Any]) -> SeedRequest:
         lane["defaultGroup"] = default_group
     if lane:
         cats[schema.SETTINGS] = {"v": lane}
+
+    tmdb_key = _value(settings, options.TMDB_KEY_FIELD)
+    tmdb_clear = _is_on(settings.get(options.TMDB_CLEAR_FIELD))
+    if tmdb_key and tmdb_clear:
+        raise SeedError("set a TMDB API key or clear it, not both")
+    if tmdb_clear:
+        if mode == MODE_FILL:
+            raise SeedError(CLEAR_NEEDS_REPLACE)
+        cats[schema.TMDB_KEY] = {"apiKey": ""}
+    elif tmdb_key:
+        cats[schema.TMDB_KEY] = {"apiKey": tmdb_key}
 
     for name, data in cats.items():
         try:
@@ -206,6 +229,15 @@ def merge(existing: Optional[Dict[str, Any]], seed: Dict[str, Dict[str, Any]], *
 
     for name, data in seed.items():
         prior = cats.get(name)
+        if name == schema.TMDB_KEY and not data.get("apiKey"):
+            if mode == MODE_FILL:
+                raise SeedError(CLEAR_NEEDS_REPLACE)
+            # A clear is written only over a key the record holds: it never
+            # starts the category, and an absent, "", or malformed one is left.
+            held = schema.tmdb_api_key(prior.get("data")) if isinstance(prior, dict) else None
+            if not held:
+                result.kept.append(name)
+                continue
         if prior is None:
             cats[name] = schema.category(data, device_id=PLUGIN_DEVICE_ID, updated_at=now)
             result.added.append(name)
@@ -221,7 +253,14 @@ def merge(existing: Optional[Dict[str, Any]], seed: Dict[str, Dict[str, Any]], *
             lane = dict(new_data.get("v") or {})
             lane.update(data.get("v", {}))
             new_data["v"] = lane
-        if new_data == prior.get("data"):
+        elif name == schema.TMDB_KEY:
+            # Unknown data members round-trip (schema 6.2), as in the apps' writes.
+            base = prior.get("data") if isinstance(prior, dict) else None
+            new_data = dict(base) if isinstance(base, dict) else {}
+            new_data["apiKey"] = data["apiKey"]
+            if not isinstance(prior, dict):
+                prior = None  # malformed: write a fresh sub-object
+        if prior is not None and new_data == prior.get("data"):
             result.kept.append(name)
             continue
         cats[name] = schema.category(new_data, device_id=PLUGIN_DEVICE_ID, updated_at=now, previous=prior)
@@ -284,7 +323,8 @@ def legacy_conflict(keys: List[str], record_key: str) -> Tuple[bool, List[str]]:
 # Dispatcharr shows an action's result only as a toast (dev branch
 # frontend/src/pages/PluginDetail.jsx:376-381), so these stay one or two lines.
 
-LABELS = {schema.GROUP_ORDER: "group order", schema.HIDDEN_GROUPS: "hidden groups"}
+LABELS = {schema.GROUP_ORDER: "group order", schema.HIDDEN_GROUPS: "hidden groups",
+          schema.TMDB_KEY: "TMDB API key"}
 
 
 def _n(count: int, noun: str) -> str:
@@ -305,6 +345,8 @@ def category_count(name: str, data: Dict[str, Any]) -> str:
         return f"settings ({sum(len(v) for v in data.values() if isinstance(v, dict))})"
     if name == schema.PROFILES:
         return f"profiles ({len(data.get('rows') or [])})"
+    if name == schema.TMDB_KEY:
+        return "TMDB API key" if data.get("apiKey") else "TMDB API key (cleared)"
     return name
 
 
@@ -312,27 +354,32 @@ def toast(mode: str, result: "MergeResult", seed_cats: Dict[str, Dict[str, Any]]
           size: Optional[int] = None) -> str:
     label = "Fill" if mode == MODE_FILL else "Replace"
     changed = [category_count(n, seed_cats[n]) for n in result.added + result.replaced]
-    kept = [LABELS.get(n, n) for n in result.kept]
+    # A TMDB clear kept by merge means the record held no key to clear.
+    no_key = schema.TMDB_KEY in result.kept and not (seed_cats.get(schema.TMDB_KEY) or {}).get("apiKey")
+    kept = [LABELS.get(n, n) for n in result.kept if not (no_key and n == schema.TMDB_KEY)]
+    note = " The record has no TMDB API key to clear." if no_key else ""
+    has = f"; the record already has {', '.join(kept)}" if kept else ""
     if write:
         if not changed:
-            return f"Applied ({label}): nothing new; the record already has " + ", ".join(kept) + "."
+            return f"Applied ({label}): nothing new{has}.{note}"
         text = f"Applied ({label}): " + ", ".join(changed) + "."
         if size is not None:
             text += f" Record {size / 1024:.1f} KB."
-        return text
+        return text + note
     if not changed:
-        return f"Preview ({label}): no change; the record already has " + ", ".join(kept) + "."
+        return f"Preview ({label}): no change{has}.{note}"
     text = f"Preview ({label}): would {'add' if mode == MODE_FILL else 'write'} " + ", ".join(changed) + "."
     if kept:
         text += " Keeps " + ", ".join(kept) + "."
-    return text
+    return text + note
 
 
 def scope_to_target(categories: Dict[str, Dict[str, Any]], *, channel_ids, live_groups, movie_groups,
                     series_groups) -> Tuple[Dict[str, Dict[str, Any]], int, int]:
     """A copy of the seed for one target user: favorites, group order, default
-    group, and hidden groups keep only what that user can see. Returns the
-    scoped categories and the counts of dropped channels and groups."""
+    group, and hidden groups keep only what that user can see. Every other
+    category (other settings, the TMDB API key) goes to each user as it is.
+    Returns the scoped categories and the counts of dropped channels and groups."""
     cats = copy.deepcopy(categories)
     visible, live = set(channel_ids), set(live_groups)
     dropped_channels = dropped_groups = 0

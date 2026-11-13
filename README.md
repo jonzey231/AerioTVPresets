@@ -3,9 +3,10 @@
 # AerioTV Presets for Dispatcharr
 
 A Dispatcharr plugin that lets a Dispatcharr admin set up a user's AerioTV app before the user signs
-in: favorite channels, Live TV group order, hidden groups and categories, and app settings such as
-theme and mode. The plugin writes that user's AerioTV Dispatcharr Sync record on the server. When
-the user signs in to AerioTV, their devices offer Dispatcharr Sync and start from that setup.
+in: favorite channels, Live TV group order, hidden groups and categories, app settings such as
+theme and mode, and a TMDB API key. The plugin writes that user's AerioTV Dispatcharr Sync record on
+the server. When the user signs in to AerioTV, their devices offer Dispatcharr Sync and start from
+that setup.
 
 ## What it does
 
@@ -75,6 +76,7 @@ user. Run it again when channels or groups change.
 | TV Shows | Hidden series categories list | `hiddenGroups.series` |
 | Profiles | Profiles table: user, display name, role (Standard, or Child for a profile already made a Child in the app), icon, and color, one row per profile in order | `profiles` (main User only) |
 | App Settings | Appearance, startup, Live TV and guide, player, Multiview, Movies, TV Shows, and DVR, and TV remote settings | `settings` (all devices) |
+| App Settings | TMDB API key, or Clear the TMDB API key | `tmdbKey` (all devices) |
 | Apply | Fill or Replace | how the record is merged |
 
 Hidden groups and categories are hidden in AerioTV; the user can show them again in AerioTV's group
@@ -100,6 +102,20 @@ Profiles:
 3. Devices offer these profiles; a profile is added on a device only when someone picks it there.
 4. The Profiles table needs a Dispatcharr build with table fields.
 
+TMDB API key:
+
+1. One key for the User and every Also apply to user. AerioTV uses it for Movies and TV Shows
+   artwork and details. Leave the field empty to keep what each record has.
+2. Fill writes the key only when the record has none yet; a key the user cleared counts as one.
+   Replace overwrites it.
+3. Clear the TMDB API key needs Replace. It removes a key the record holds and never adds an empty
+   one. A device keeps its own key and sends it back when the user saved it there after the clear,
+   or when the device does not know when it was saved (for example a key saved before AerioTV
+   1.8.45 or AerioTV for Android 0.5.14). To remove a key for sure, clear it in AerioTV on the device.
+4. Copy from copies the other user's key into the field.
+5. The field masks the key, but Dispatcharr keeps it in the plugin's saved settings until you empty
+   the field. The key is never logged or shown in notifications.
+
 ## How AerioTV picks it up
 
 1. The user signs in to AerioTV with the Dispatcharr server.
@@ -124,7 +140,7 @@ Profiles:
 ## Privacy
 
 The plugin logs user ids, counts, modes, and record sizes. It never logs channel names, group
-names, setting values, or record keys. It makes no network calls.
+names, setting values, the TMDB API key, or record keys. It makes no network calls.
 
 ## Open items
 
@@ -164,6 +180,8 @@ repository's release zip with `{version}`, plus a pull request titled `[aeriotv-
 
 ## Changelog
 
+- Unreleased: a TMDB API key in App Settings, with Fill, Replace, and an explicit Clear; Copy from
+  and Also apply to include it. The vendored schema follows AerioTV `e8d7cb2`.
 - 0.0.7: Copy from another user, Also apply to several users, a Current record line per section,
   a Profiles section (no PINs; users set them on a device), Clear Record, and clearer steps.
 - 0.0.6: the steps and notes show one line each, and the steps are rewritten to match the flow.
