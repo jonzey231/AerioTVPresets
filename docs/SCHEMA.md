@@ -1,10 +1,10 @@
 # Vendored schema excerpt
 
 Source: `docs/DispatcharrSyncSchema.md` in the AerioTV repos (Apple
-https://github.com/jonzey231/AerioTV at commit 9e36f6e), copied 2026-11-13. The Android repo had
-not landed 9e36f6e's section 4.13 bullet when this was copied; its copy at 49ab608e differs only
-there. Only the sections this plugin depends on are copied, unedited. The AerioTV repos hold the
-contract; when this copy and the source differ, the source wins and this file is refreshed.
+https://github.com/jonzey231/AerioTV at commit 9e36f6e, byte-identical in the Android repo at
+e0ac6104), copied 2026-11-13. Only the sections this plugin depends on are copied, unedited. The
+AerioTV repos hold the contract; when this copy and the source differ, the source wins and this
+file is refreshed.
 
 Sections copied: 1.1, 2 (intro), 2.1, 3, 4 (intro), 4.1, 4.7, 4.8, 4.9, 4.12, 4.13, 6 (intro), 6.1,
 6.2, 6.5, 8, 9, and 10a rule 2.
