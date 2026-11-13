@@ -181,7 +181,7 @@ repository's release zip with `{version}`, plus a pull request titled `[aeriotv-
 ## Changelog
 
 - Unreleased: a TMDB API key in App Settings, with Fill, Replace, and an explicit Clear; Copy from
-  and Also apply to include it. The vendored schema follows AerioTV `e8d7cb2`.
+  and Also apply to include it. The vendored schema follows AerioTV `9e36f6e`.
 - 0.0.7: Copy from another user, Also apply to several users, a Current record line per section,
   a Profiles section (no PINs; users set them on a device), Clear Record, and clearer steps.
 - 0.0.6: the steps and notes show one line each, and the steps are rewritten to match the flow.

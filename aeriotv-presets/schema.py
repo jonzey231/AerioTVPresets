@@ -48,6 +48,10 @@ GROUP_TOKEN_MAX = 200
 # access token. The plugin refuses anything longer than this, which keeps the
 # category far inside Dispatcharr's 128 KiB value limit.
 TMDB_KEY_MAX = 1024
+# The apps' saved server copies hold the key's SHA-256 digest under this name
+# (Apple e4a19d3). Section 4.13: a write sends only the key or "", never a
+# digest or an encrypted form, so the plugin drops this member if it ever sees it.
+TMDB_DIGEST = "apiKeySha256"
 
 
 class SchemaError(ValueError):

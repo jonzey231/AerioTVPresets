@@ -254,9 +254,10 @@ def merge(existing: Optional[Dict[str, Any]], seed: Dict[str, Dict[str, Any]], *
             lane.update(data.get("v", {}))
             new_data["v"] = lane
         elif name == schema.TMDB_KEY:
-            # Unknown data members round-trip (schema 6.2), as in the apps' writes.
+            # Unknown data members round-trip (schema 6.2), as in the apps'
+            # writes, except a digest: only the key or "" is ever sent (4.13).
             base = prior.get("data") if isinstance(prior, dict) else None
-            new_data = dict(base) if isinstance(base, dict) else {}
+            new_data = {k: v for k, v in base.items() if k != schema.TMDB_DIGEST} if isinstance(base, dict) else {}
             new_data["apiKey"] = data["apiKey"]
             if not isinstance(prior, dict):
                 prior = None  # malformed: write a fresh sub-object

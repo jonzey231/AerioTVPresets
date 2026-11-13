@@ -1,10 +1,10 @@
 # Vendored schema excerpt
 
 Source: `docs/DispatcharrSyncSchema.md` in the AerioTV repos (Apple
-https://github.com/jonzey231/AerioTV at commit e8d7cb2, byte-identical in the Android repo at
-49ab608e), copied 2026-11-13. Only the sections this plugin depends on are copied, unedited. The
-AerioTV repos hold the contract; when this copy and the source differ, the source wins and this
-file is refreshed.
+https://github.com/jonzey231/AerioTV at commit 9e36f6e), copied 2026-11-13. The Android repo had
+not landed 9e36f6e's section 4.13 bullet when this was copied; its copy at 49ab608e differs only
+there. Only the sections this plugin depends on are copied, unedited. The AerioTV repos hold the
+contract; when this copy and the source differ, the source wins and this file is refreshed.
 
 Sections copied: 1.1, 2 (intro), 2.1, 3, 4 (intro), 4.1, 4.7, 4.8, 4.9, 4.12, 4.13, 6 (intro), 6.1,
 6.2, 6.5, 8, 9, and 10a rule 2.
@@ -544,6 +544,9 @@ Row: `[userId:int, username:string, displayName:string(max 40 B), pinType:"none"
   applied there, and a profile whose user has no `tmdbKey` yet is seeded from it.
 - Logs never carry the key: `[DSYNC] tmdbKey: set from the server`, `cleared from the server`, or
   `kept this device's key (newer than the server's clear); sending it`.
+- Devices never keep the key in plain text in their saved server copies (section 6.2); change
+  detection uses a SHA-256 digest. A write sends only the key itself or `""`, never a digest or an
+  encrypted form.
 
 
 ## 6. Merge, round-trip, and versioning

@@ -136,6 +136,22 @@ def test_replace_overwrites_an_existing_key_and_keeps_unknown_members():
     assert result.record["categories"]["favorites"] == record()["categories"]["favorites"]
 
 
+def test_plugin_writes_only_the_key_or_empty_never_a_digest():
+    # Schema 4.13 (Apple 9e36f6e): a write sends only the key itself or "".
+    digest = "ab" * 32
+    for seed_key in (KEY, ""):
+        held = device_tmdb({"apiKey": OTHER, schema.TMDB_DIGEST: digest, "future": 1})
+        result = seed.merge(record(held), {"tmdbKey": {"apiKey": seed_key}}, mode="replace",
+                            app_version="0.0.7", now=NOW)
+        assert result.replaced == ["tmdbKey"]
+        data = result.record["categories"]["tmdbKey"]["data"]
+        assert data == {"apiKey": seed_key, "future": 1}
+        assert digest not in json.dumps(result.record)
+    for cats in (seed.parse_settings(form(apply_mode="replace", tmdb_api_key=KEY)).categories,
+                 seed.parse_settings(form(apply_mode="replace", tmdb_clear=True)).categories):
+        assert set(cats["tmdbKey"]) == {"apiKey"} and cats["tmdbKey"]["apiKey"] in (KEY, "")
+
+
 def test_replace_with_the_same_key_keeps_the_device_stamp():
     existing = record(device_tmdb({"apiKey": KEY}))
     result = seed.merge(existing, {"tmdbKey": {"apiKey": KEY}}, mode="replace", app_version="0.0.7", now=NOW)
