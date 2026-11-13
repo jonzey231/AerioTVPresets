@@ -3,10 +3,20 @@
 # AerioTV Presets for Dispatcharr
 
 A Dispatcharr plugin that lets a Dispatcharr admin set up a user's AerioTV app before the user signs
-in: favorite channels, Live TV group order, hidden groups and categories, app settings such as
-theme and mode, and a TMDB API key. The plugin writes that user's AerioTV Dispatcharr Sync record on
-the server. When the user signs in to AerioTV, their devices offer Dispatcharr Sync and start from
-that setup.
+in. The plugin writes that user's AerioTV Dispatcharr Sync record on the server. When the user signs
+in to AerioTV, their devices offer Dispatcharr Sync and start from that setup.
+
+## What it presets
+
+1. Favorite channels, in order.
+2. Live TV group order: server order, alphabetical, or a manual order.
+3. Hidden Live TV groups, and hidden movie and series categories.
+4. App settings such as theme, mode, default group, guide, player, and DVR choices.
+5. Profiles (since 0.0.7): the profiles offered on the user's devices, each a Dispatcharr user, with
+   display name, role, icon, and color. The plugin sets no PINs; users set them on a device. It can
+   edit a Child profile made in the AerioTV app but never creates one.
+6. A TMDB API key (since 0.0.8): one key for all of the user's devices, used for Movies and TV Shows
+   artwork and details.
 
 ## What it does
 
@@ -21,10 +31,10 @@ and [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Requirements
 
 1. Dispatcharr 0.33.0 or newer, with the App Data API.
-2. For collapsible sections (Live TV, Movies, TV Shows, App Settings, Apply), a Dispatcharr build
-   whose plugin settings support `section` fields: the Dispatcharr `dev` branch from November 2026
-   (it still reports version 0.33.0). On a build without them, the plugin falls back to Expand
-   switches for each section and a flat list.
+2. For collapsible sections (Live TV, Movies, TV Shows, Profiles, App Settings, Apply), a
+   Dispatcharr build whose plugin settings support `section` fields: the Dispatcharr `dev` branch
+   from November 2026 (it still reports version 0.33.0). On a build without them, the plugin falls
+   back to Expand switches for each section and a flat list.
 3. AerioTV 1.8.45 or newer on iPhone, iPad, and Apple TV, or AerioTV for Android 0.5.14 or newer on
    phones, tablets, and Android TV, with Dispatcharr Sync on.
 
