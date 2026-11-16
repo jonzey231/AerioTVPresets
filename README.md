@@ -30,11 +30,12 @@ and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Requirements
 
-1. Dispatcharr 0.33.0 or newer, with the App Data API.
-2. For collapsible sections (Live TV, Movies, TV Shows, Profiles, App Settings, Apply), a
-   Dispatcharr build whose plugin settings support `section` fields: the Dispatcharr `dev` branch
-   from November 2026 (it still reports version 0.33.0). On a build without them, the plugin falls
-   back to Expand switches for each section and a flat list.
+1. Dispatcharr 0.34.0 or newer. Until 0.34.0 is released, that means a current Dispatcharr `dev`
+   build (it still reports version 0.33.0). The plugin catalog lists the minimum as v0.34.0, so its
+   Install button is unavailable on the 0.33.0 release.
+2. Collapsible sections (Live TV, Movies, TV Shows, Profiles, App Settings, Apply) need plugin
+   settings `section` fields, which current `dev` builds have. On a build without them, the plugin
+   falls back to Expand switches for each section and a flat list.
 3. AerioTV 1.8.45 or newer on iPhone, iPad, and Apple TV, or AerioTV for Android 0.5.14 or newer on
    phones, tablets, and Android TV, with Dispatcharr Sync on.
 
